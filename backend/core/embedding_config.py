@@ -1,0 +1,2 @@
+EMBEDDING_MODEL = "gemini-embedding-2"
+EMBEDDING_DIM = 768

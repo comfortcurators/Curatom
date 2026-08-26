@@ -1,0 +1,5 @@
+{
+  "name": "Curatom Enterprise",
+  "version": "rv0.2.0",
+  "description": "Governed enterprise agent control plane with tenant-scoped registry, policy controls, grounded memory recall, and explicitly disabled durable task execution until a worker is deployed."
+}

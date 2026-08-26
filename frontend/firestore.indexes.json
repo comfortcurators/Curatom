@@ -1,0 +1,241 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "atoms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "memories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "memories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding_model",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding_dimension",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    },
+    {
+      "collectionGroup": "excerpts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "model_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding_model",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding_dimension",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    },
+    {
+      "collectionGroup": "excerpts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "embedding_model",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding_dimension",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "fleets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "recalls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "memories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "metadata.subject_ids",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "memory_id",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "recalls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "subject_ids",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "org_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenant_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "subject_ids",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    }
+  ]
+}

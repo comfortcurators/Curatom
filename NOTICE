@@ -1,0 +1,24 @@
+Curatom Enterprise
+Copyright 2026 Comfort Curators Private Limited
+
+Publisher: Comfort Curators Private Limited
+Corporate Identity Number: U47912HR2026PTC144195
+Incorporated in India on 15 April 2026
+
+Curatom Enterprise on the current main branch is licensed under version 3 of
+the GNU Affero General Public License only (AGPL-3.0-only). Comfort Curators
+Private Limited may separately offer commercial licensing for material for
+which it holds sufficient rights, but no commercial license is granted by
+this repository itself, and the project should not be described as already
+dual-licensed unless and until one has actually been granted. See LICENSE and
+LICENSING.md.
+
+Curatom Enterprise is independent software. Google Gemini, Google Cloud
+Firestore, FastAPI, React, and all other third-party names, trademarks, and
+libraries belong to their respective owners. Their applicable licenses and
+terms continue to govern those components.
+
+The included enterprise fixtures reference the publisher, but all operational
+metrics, employee counts, booking figures, and synthetic subject identifiers
+in those fixtures are fabricated for policy and residency testing. They are not
+company facts and contain no real customer or employee data.

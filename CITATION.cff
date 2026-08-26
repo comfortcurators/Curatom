@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Curatom Enterprise — Staging Candidate: A Tenant-Scoped Agent Registry with Grounded Memory Recall"
+type: software
+version: 0.2.0
+date-released: 2026-08-26
+authors:
+  - name: "Comfort Curators Private Limited"
+license: AGPL-3.0-only
+abstract: >-
+  A staging candidate for a tenant-scoped agent registry with policy-aware,
+  residency-enforced, grounded memory recall.
+keywords:
+  - agent registry
+  - policy engine
+  - retrieval-augmented generation
+  - data residency
+  - multi-tenant
