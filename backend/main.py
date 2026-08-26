@@ -10,6 +10,7 @@ import uuid
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.cloud.firestore_v1.vector import Vector
 from core.config import settings, build_genai_client
@@ -900,3 +901,23 @@ async def load_synthetic_fixture(ctx: AuthContext = Depends(authorize("atom.crea
         "loaded_records": loaded_count,
         "label": "SYNTHETIC LOAD-TEST FIXTURE — NOT COMPANY FACTS"
     }
+
+
+# Serve the built frontend (frontend/dist, copied into the image by the
+# Dockerfile) from the same Cloud Run service as the API, so no separate
+# hosting product or deploy path is needed. Registered last so every API
+# route above takes priority; unmatched paths fall back to index.html for
+# client-side routing.
+class SPAStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                return await super().get_response("index.html", scope)
+            raise
+
+
+_frontend_dist = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_frontend_dist):
+    app.mount("/", SPAStaticFiles(directory=_frontend_dist, html=True), name="frontend")

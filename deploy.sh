@@ -132,7 +132,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "==> Deploying ${SERVICE_NAME} to Cloud Run"
 gcloud run deploy "${SERVICE_NAME}" \
-  --source ./backend \
+  --source . \
   --region "${REGION}" \
   --service-account "${SERVICE_ACCOUNT_EMAIL}" \
   --allow-unauthenticated \
@@ -143,19 +143,14 @@ BACKEND_URL="$(gcloud run services describe "${SERVICE_NAME}" \
   --region "${REGION}" --format='value(status.url)')"
 
 echo
-echo "==> Backend deployed: ${BACKEND_URL}"
+echo "==> Deployed (frontend + backend, one service): ${BACKEND_URL}"
 echo
 echo "Next:"
-echo "  1. Set FRONTEND_URL_PRODUCTION on the service once the frontend has a URL:"
-echo "       gcloud run services update ${SERVICE_NAME} --region ${REGION} \\"
-echo "         --update-env-vars FRONTEND_URL_PRODUCTION=https://your-frontend"
-echo "     Until then CORS admits no browser origin, by design."
-echo
-echo "  2. Build the frontend against this backend:"
-echo "       cd frontend && VITE_API_BASE_URL=${BACKEND_URL} npm ci && npm run build"
-echo
-echo "  3. Retrieve the demo password to log in:"
+echo "  1. Retrieve the demo password to log in:"
 echo "       gcloud secrets versions access latest --secret=curatom-demo-password"
 echo
-echo "  4. Verify the live deployment (see DEPLOYMENT_VERIFICATION.md):"
+echo "  2. Verify the live deployment (see DEPLOYMENT_VERIFICATION.md):"
 echo "       curl -sS ${BACKEND_URL}/healthz"
+echo
+echo "  3. Open the app:"
+echo "       ${BACKEND_URL}"
