@@ -19,6 +19,18 @@ import {
 import { Role } from '../types';
 import { APP_NAME, APP_VERSION, COMPANY_NAME, DEFAULT_TENANT_ID } from '../constants';
 
+const LEGAL_NAME = 'Comfort Curators Private Limited';
+const CIN = 'U47912HR2026PTC144195';
+
+const COMPLIANCE_LINKS = [
+  { to: '/privacy-policy', label: 'Privacy Policy' },
+  { to: '/ai-transparency', label: 'AI Transparency & Responsibility' },
+  { to: '/help', label: 'Help & FAQ' },
+  { to: '/documentation', label: 'Documentation' },
+  { to: '/data-we-collect', label: 'Data We Collect' },
+  { to: '/about', label: 'About Company' },
+];
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -77,13 +89,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Sidebar */}
       <aside className="w-64 bg-surface-100 border-r border-surface-300 flex flex-col z-10 shrink-0">
         <div className="p-24 border-b border-surface-300">
-          <h1 className="font-display text-24 font-semibold tracking-tight text-ink-primary">
+          <h1 className="font-display text-24 font-light tracking-tight text-ink-primary">
             {APP_NAME}
           </h1>
-          <p className="text-10 text-ink-secondary mt-4 uppercase tracking-widest font-mono">
+          <p className="label-caps text-10 mt-4">
             {COMPANY_NAME}
           </p>
-          <p className="mt-4 text-10 font-mono text-accent">{APP_VERSION}</p>
+          <p className="mt-4 text-10 font-mono text-ink-secondary">{APP_VERSION}</p>
         </div>
 
         {/* Active Context */}
@@ -159,6 +171,26 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="max-w-6xl mx-auto h-full">
             {children}
           </div>
+
+          {/* Compliance footer — full legal entity name, on every page. */}
+          <footer className="max-w-6xl mx-auto mt-48 pt-24 border-t border-surface-300">
+            <div className="flex flex-col gap-16 md:flex-row md:items-center md:justify-between">
+              <p className="text-11 text-ink-secondary">
+                © {new Date().getFullYear()} {LEGAL_NAME} · CIN {CIN}
+              </p>
+              <nav className="flex flex-wrap gap-x-20 gap-y-8">
+                {COMPLIANCE_LINKS.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className="text-11 text-ink-secondary hover:text-ink-primary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          </footer>
         </div>
       </main>
     </div>

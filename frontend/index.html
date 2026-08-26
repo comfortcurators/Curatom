@@ -16,18 +16,33 @@
         theme: {
           extend: {
             colors: {
+              // "Night" — Comfort Curators design system (DESIGN.md).
+              // Gold (#b9975b) lives only in the logo and the Cream
+              // editorial theme; Night's accent is neutral platinum so
+              // the UI reads monochrome, like Apple's own dark mode.
               canvas: '#000000',
               surface: {
-                100: '#131210',
-                200: '#1c1b16',
-                300: '#232017',
-                400: '#2c2a22'
+                100: '#1c1c1e', // systemGray6 — grouped-card surface
+                200: '#2c2c2e', // systemGray5 — raised cell / hover
+                300: '#3a3a3c', // systemGray4
+                400: '#48484a'  // systemGray3
               },
               ink: {
-                primary: '#c8c6bd',
-                secondary: '#9a988f'
+                primary: '#f5f5f7',                  // Apple off-white
+                secondary: 'rgba(245,245,247,.72)',   // ink-soft
+                muted: 'rgba(245,245,247,.56)',       // muted
+                pewter: '#9a988f',                    // 2nd ink / mark
+                'pewter-hi': '#c8c6bd'
               },
-              accent: '#b9975b'
+              border: {
+                DEFAULT: 'rgba(255,255,255,.08)'      // iOS hairline
+              },
+              accent: {
+                DEFAULT: '#c7c7cc',  // platinum — replaces gold in Night
+                soft: '#dcdce0',     // platinum soft
+                hover: '#a1a1a6',    // platinum hover
+                gold: '#b9975b'      // logo/Cream only — never a dark-UI fill
+              }
             },
             fontFamily: {
               display: ['Fraunces', 'serif'],
@@ -57,10 +72,22 @@
     <style>
       body {
         background-color: #000000;
-        color: #c8c6bd;
+        color: #f5f5f7;
         margin: 0;
         padding: 0;
         overflow-x: hidden;
+      }
+
+      /* .label-caps — the brand's signature eyebrow: gold letterspaced
+         classical caps. In Night it resolves to platinum (per DESIGN.md's
+         gold rule); the literal token stays only for the Cream theme. */
+      .label-caps {
+        text-transform: uppercase;
+        letter-spacing: 0.3em;
+        color: #c7c7cc;
+      }
+      html.light .label-caps {
+        color: #b9975b;
       }
       
       .app-background {
@@ -105,10 +132,10 @@
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #131210;
+        background: #1c1c1e;
       }
       ::-webkit-scrollbar-thumb {
-        background: #2c2a22;
+        background: #3a3a3c;
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
