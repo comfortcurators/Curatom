@@ -15,8 +15,10 @@ The atom is whichever one is listening right now.
 
 ## License
 
-Curatom is available under the **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`).
+Curatom on the current `main` branch is licensed under the **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`).
 
-Comfort Curators Private Limited may also offer Curatom under separate commercial licensing terms for organizations that require an alternative to the AGPL distribution.
+**COMFORT CURATORS PRIVATE LIMITED** may separately offer commercial licensing for Curatom material for which it holds sufficient rights. No commercial or proprietary license is granted by this repository itself.
+
+Earlier copies validly distributed under Apache License 2.0 remain governed by the terms that applied to those copies.
 
 See [LICENSE](./LICENSE) and [LICENSING.md](./LICENSING.md).
