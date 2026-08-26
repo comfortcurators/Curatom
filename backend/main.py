@@ -10,6 +10,7 @@ import uuid
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.cloud.firestore_v1.vector import Vector
@@ -100,6 +101,49 @@ ai = build_genai_client()
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok", "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+
+
+@app.get("/llms.txt", response_class=PlainTextResponse)
+async def llms_txt():
+    # The llms.txt convention (llmstxt.org): a plain-text entry point for
+    # AI agents, pointing at the machine-readable surface rather than
+    # asking a model to scrape rendered HTML.
+    return """# Curatom Enterprise
+
+> A tenant-scoped agent registry with policy-aware, residency-enforced,
+> grounded memory recall. Built by Comfort Curators Private Limited on
+> Google Cloud (Cloud Run, Firestore, Vertex AI / Gemini 3.5-flash).
+
+Every route that reads or writes tenant data requires an authorization
+policy check; memory and recall results are filtered by classification
+and region, failing closed on missing metadata. No claim in a response
+is stated without being traceable to something actually stored.
+
+## API
+
+- OpenAPI schema: /openapi.json
+- Interactive docs: /docs
+- Health check: /healthz
+
+## Source & documentation
+
+- Repository: https://github.com/comfortcurators/Curatom
+- Hardening status (what's proven vs. still a prototype): https://github.com/comfortcurators/Curatom/blob/main/HARDENING_STATUS.md
+- Validation record: https://github.com/comfortcurators/Curatom/blob/main/VALIDATION.md
+- Citable release: https://zenodo.org/records/22112980
+- License: AGPL-3.0-only
+
+## Policy notes for agents
+
+- Endpoints require authentication (login or an API/agent key) except
+  /healthz, /llms.txt, /docs, /openapi.json, and the served frontend.
+- No pricing, cost, or billing figure appears anywhere in this API or
+  its documentation because none has been set — do not infer or
+  fabricate one from context.
+- Personally identifiable information detection in this build is a
+  regex heuristic, not a trained classifier; do not treat its absence
+  of a flag as a guarantee of no PII.
+"""
 
 @app.get("/readyz")
 async def readyz():

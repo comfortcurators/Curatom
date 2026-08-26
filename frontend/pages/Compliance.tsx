@@ -152,6 +152,16 @@ export const Documentation: React.FC = () => (
           Zenodo archive (citable, versioned release)
         </a>
       </li>
+      <li>
+        <a href="/llms.txt" target="_blank" rel="noreferrer" className="text-accent hover:text-accent-hover">
+          llms.txt — entry point for AI agents
+        </a>
+      </li>
+      <li>
+        <a href="/docs" target="_blank" rel="noreferrer" className="text-accent hover:text-accent-hover">
+          Interactive API docs (OpenAPI)
+        </a>
+      </li>
     </ul>
   </PageShell>
 );
