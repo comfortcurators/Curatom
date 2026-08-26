@@ -5,7 +5,9 @@ import datetime
 import logging
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError
 from google.cloud.firestore_v1.vector import Vector
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 from core.config import settings, build_genai_client
 from core.firestore_client import get_db
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
@@ -15,8 +17,24 @@ gemini_sem = asyncio.Semaphore(settings.GEMINI_CONCURRENCY_LIMIT)
 logger = logging.getLogger(__name__)
 
 
+def _is_rate_limited(exc: BaseException) -> bool:
+    return isinstance(exc, ClientError) and getattr(exc, "code", None) == 429
+
+
+@retry(
+    retry=retry_if_exception(_is_rate_limited),
+    wait=wait_exponential(multiplier=2, min=2, max=30),
+    stop=stop_after_attempt(5),
+    reraise=True,
+)
 async def embed_text(text: str) -> list[float]:
-    """Embed text with the configured Gemini embedding model at the index dimension."""
+    """Embed text with the configured Gemini embedding model at the index dimension.
+
+    Vertex AI's per-minute embedding quota is low enough that a normal
+    burst (loading the synthetic fixture, ingesting several directory
+    entries in a row) exceeds it; retry with backoff rather than
+    surfacing a 500 for a transient 429.
+    """
     async with gemini_sem:
         response = await ai.aio.models.embed_content(
             model=EMBEDDING_MODEL,

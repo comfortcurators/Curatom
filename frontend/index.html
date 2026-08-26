@@ -20,7 +20,7 @@
               // Gold (#b9975b) lives only in the logo and the Cream
               // editorial theme; Night's accent is neutral platinum so
               // the UI reads monochrome, like Apple's own dark mode.
-              canvas: '#000000',
+              canvas: '#0a0a0c',
               surface: {
                 100: '#1c1c1e', // systemGray6 — grouped-card surface
                 200: '#2c2c2e', // systemGray5 — raised cell / hover
@@ -71,11 +71,19 @@
 
     <style>
       body {
-        background-color: #000000;
+        background-color: #0a0a0c;
         color: #f5f5f7;
         margin: 0;
         padding: 0;
         overflow-x: hidden;
+      }
+
+      /* Card elevation — a little real depth instead of flat grey slabs
+         separated only by a 1px hairline. Kept subtle: no glow, no color,
+         just enough shadow that surfaces read as raised rather than
+         painted-on. */
+      .card-elevated {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
       }
 
       /* .label-caps — the brand's signature eyebrow: gold letterspaced
@@ -96,7 +104,7 @@
         z-index: 0; 
         pointer-events: none; 
         user-select: none;
-        background: radial-gradient(circle at 50% 50%, rgba(245,245,247,0.018), transparent 34%), #000000;
+        background: radial-gradient(circle at 50% 0%, rgba(245,245,247,0.05), transparent 42%), #0a0a0c;
       }
       
       .app-grain {
