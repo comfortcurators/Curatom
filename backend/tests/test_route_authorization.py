@@ -26,9 +26,6 @@ from main import app  # noqa: E402
 # is the one route that must run before any principal exists.
 ALLOWED_UNGATED_PATHS = {
     "/healthz", "/readyz", "/auth/login",
-    # TEMPORARY — diagnostic only, returns a truncated hash fingerprint
-    # never the credential itself. Remove alongside the route in main.py.
-    "/debug/auth-fingerprint",
     # Deliberately public agent-discovery surface: a cold agent must be
     # able to reach these with zero prior credential. None of them read
     # or write tenant-scoped data - registration (which does) still
