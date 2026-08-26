@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict, Any, Tuple
 from google.cloud import firestore
 from google.cloud.firestore_v1.vector import Vector
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
 from core.firestore_client import get_db
 from core.security import validate_classification, validate_region
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
@@ -22,7 +23,7 @@ class GlobalRepository:
                 .find_nearest(
                 vector_field="embedding",
                 query_vector=Vector(query_embedding),
-                distance_measure=firestore.DistanceMeasure.COSINE,
+                distance_measure=DistanceMeasure.COSINE,
                 limit=limit
             )
         else:
@@ -31,7 +32,7 @@ class GlobalRepository:
                 .find_nearest(
                 vector_field="embedding",
                 query_vector=Vector(query_embedding),
-                distance_measure=firestore.DistanceMeasure.COSINE,
+                distance_measure=DistanceMeasure.COSINE,
                 limit=limit
             )
         docs = await query.get()
@@ -253,7 +254,7 @@ class TenantScopedRepository:
             .find_nearest(
                 vector_field="embedding",
                 query_vector=Vector(query_embedding),
-                distance_measure=firestore.DistanceMeasure.COSINE,
+                distance_measure=DistanceMeasure.COSINE,
                 limit=limit
             )
         docs = await query.get()

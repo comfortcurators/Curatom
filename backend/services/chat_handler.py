@@ -21,7 +21,7 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
 
     if atom_key:
         prompt = f"Reshape this documentation context to answer the query: {query}\nContext: {context_text}"
-        resp = await ai.aio.models.generate_content(model='gemini-3.5-flash', contents=prompt)
+        resp = await ai.aio.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         return {
             "text": resp.text,
             "is_stale": False,
@@ -35,7 +35,7 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
         ]
             
         resp = await ai.aio.models.generate_content(
-            model='gemini-3.5-flash', 
+            model='gemini-2.5-flash', 
             contents=f"Summarize this context for user query '{query}' in enterprise fleet '{settings.ENTERPRISE_NAME}':\n\n{context_text}"
         )
         

@@ -121,7 +121,7 @@ def test_region_validation_returns_422_before_backend_write():
 
 def test_embedding_configuration_matches_firestore_index():
     from services.directory_fetcher import EMBEDDING_DIM, EMBEDDING_MODEL
-    assert EMBEDDING_MODEL == "gemini-embedding-2"
+    assert EMBEDDING_MODEL == "gemini-embedding-001"
     assert EMBEDDING_DIM == 768
 
 
@@ -207,7 +207,7 @@ def test_firestore_vector_indexes_match_embedding_contract():
 
     assert any("model_id" in {f["fieldPath"] for f in idx["fields"]} for idx in excerpt_indexes)
     assert any("model_id" not in {f["fieldPath"] for f in idx["fields"]} for idx in excerpt_indexes)
-    assert EMBEDDING_MODEL == "gemini-embedding-2"
+    assert EMBEDDING_MODEL == "gemini-embedding-001"
 
 
 # ---------------------------------------------------------------------------
