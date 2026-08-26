@@ -10,7 +10,7 @@ import uuid
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.cloud.firestore_v1.vector import Vector
@@ -103,6 +103,149 @@ async def healthz():
     return {"status": "ok", "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()}
 
 
+@app.get("/", include_in_schema=False)
+async def root(request: Request):
+    """
+    Content-negotiated root. A browser gets the SPA shell (unchanged);
+    a client that asks for JSON — any agent, crawler, or curl — gets a
+    machine-readable discovery manifest instead of having to parse
+    rendered HTML to find the API. Real endpoints only: nothing here is
+    advertised unless it actually exists and answers.
+    """
+    accept = request.headers.get("accept", "")
+    wants_json = "application/json" in accept and "text/html" not in accept
+    if wants_json:
+        return JSONResponse({
+            "name": APP_NAME_CONST,
+            "version": "rv0.2.0",
+            "operator": "Comfort Curators Private Limited",
+            "description": (
+                "A tenant-scoped agent registry with policy-aware, "
+                "residency-enforced, grounded memory recall."
+            ),
+            "human_reception": "/reception",
+            "agent_handshake": "/v1/reception/agents/handshake",
+            "human_login": "/auth/login",
+            "capabilities": "/v1/capabilities",
+            "openapi": "/openapi.json",
+            "docs": "/docs",
+            "llms_txt": "/llms.txt",
+            "health": "/healthz",
+            "auth_note": (
+                "Handshake and capabilities are public. Every other route "
+                "requires a session token (human login) or an atom API key "
+                "(agent), obtained after handshake — see /docs."
+            )
+        })
+    static_index = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    if os.path.isfile(static_index):
+        return FileResponse(static_index)
+    raise HTTPException(404, "Frontend not built into this image")
+
+
+APP_NAME_CONST = "Curatom Enterprise"
+
+
+@app.get("/v1/capabilities")
+async def public_capabilities():
+    # Public, unauthenticated: what an agent can do before it has any
+    # credential. Mutating/tenant-scoped operations are deliberately
+    # absent — those require a session or an atom key, see /docs.
+    return {
+        "protocols": ["http"],
+        "endpoints": {
+            "agent_handshake": {
+                "method": "POST",
+                "path": "/v1/reception/agents/handshake",
+                "auth": "none",
+                "purpose": "Derive a suggested operational profile from a model-family hint or sample output, grounded against stored documentation excerpts."
+            },
+            "human_login": {
+                "method": "POST",
+                "path": "/auth/login",
+                "auth": "none (issues a session token)"
+            },
+            "atom_register": {
+                "method": "POST",
+                "path": "/atoms/register",
+                "auth": "session token (human operator)",
+                "purpose": "Creates a durable atom identity and issues its API key. Not reachable from handshake alone — a human operator must authorize registration."
+            }
+        },
+        "note": "Tasks (/tasks) intentionally return HTTP 501 — not implemented, not a broken endpoint."
+    }
+
+
+@app.post("/v1/reception/agents/handshake")
+async def agent_handshake(req: IdentifyRequest, request: Request):
+    """
+    Public agent entry point — no prior credential required. Derives a
+    suggested profile the same way the authenticated /atoms/identify
+    does, but reachable cold, matching the discovery manifest's claim.
+    This does not create an atom or issue a key: registration still
+    requires a human operator via /atoms/register, deliberately, so a
+    profile suggestion can never mint durable access on its own.
+    """
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded_for.split(",", 1)[0].strip() or (request.client.host if request.client else "unknown")
+    await rate_limiter.check_rate_limit("handshake", f"ip:{client_ip}", max_rpm=20)
+
+    query_text = req.sample_response or req.model_family_hint or ""
+    if not query_text:
+        raise HTTPException(400, "Provide model_family_hint or sample_response")
+
+    query_emb = await embed_text(query_text)
+    global_repo = GlobalRepository()
+    dir_results = await global_repo.search_excerpts(req.model_family_hint or "", query_emb, limit=3)
+
+    sources = []
+    context_text = ""
+    for d in dir_results:
+        if d.get('source_url'):
+            sources.append({"uri": d['source_url'], "title": d.get('section_title', 'Documentation')})
+        if d.get('text'):
+            context_text += d['text'] + "\n"
+
+    if not sources:
+        return {
+            "principal_type": "agent",
+            "profile": None,
+            "sources": [],
+            "matched": False,
+            "next": "/atoms/register (requires a human operator session)"
+        }
+
+    prompt = f"Derive the optimal agent operational profile based on this documentation:\n{context_text}"
+    resp = await ai.aio.models.generate_content(
+        model='gemini-3.5-flash',
+        contents=prompt,
+        config=genai.types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema={
+                "type": "OBJECT",
+                "properties": {
+                    "format": {"type": "STRING"},
+                    "retention_window_hours": {"type": "INTEGER"},
+                    "accuracy_tolerance": {"type": "STRING"},
+                    "system_persona": {"type": "STRING"},
+                    "max_output_tokens": {"type": "INTEGER"},
+                    "classification_ceiling": {"type": "STRING"}
+                }
+            }
+        )
+    )
+    profile = json.loads(resp.text)
+    profile["permitted_regions"] = ["IN", "EU", "US", "SG"]
+    profile["version"] = 1
+    return {
+        "principal_type": "agent",
+        "profile": profile,
+        "sources": sources,
+        "matched": True,
+        "next": "/atoms/register (requires a human operator session)"
+    }
+
+
 @app.get("/llms.txt", response_class=PlainTextResponse)
 async def llms_txt():
     # The llms.txt convention (llmstxt.org): a plain-text entry point for
@@ -119,8 +262,17 @@ policy check; memory and recall results are filtered by classification
 and region, failing closed on missing metadata. No claim in a response
 is stated without being traceable to something actually stored.
 
-## API
+## Start here
 
+- Discovery manifest: GET / with `Accept: application/json`
+- Agent handshake (no credential required): POST /v1/reception/agents/handshake
+  Body: {"model_family_hint": "...", "sample_response": "..."}
+  Returns a suggested operational profile grounded against stored
+  documentation excerpts. Does not create an identity or issue a key —
+  registration (/atoms/register) still requires a human operator
+  session, deliberately, so a handshake alone can never mint durable
+  access.
+- Public capabilities list: GET /v1/capabilities
 - OpenAPI schema: /openapi.json
 - Interactive docs: /docs
 - Health check: /healthz
@@ -135,8 +287,12 @@ is stated without being traceable to something actually stored.
 
 ## Policy notes for agents
 
-- Endpoints require authentication (login or an API/agent key) except
-  /healthz, /llms.txt, /docs, /openapi.json, and the served frontend.
+- Public, no credential needed: /, /v1/reception/agents/handshake,
+  /v1/capabilities, /healthz, /llms.txt, /docs, /openapi.json, and the
+  served frontend.
+- Everything else requires a session token (human login via
+  /auth/login) or an atom API key (issued only after a human operator
+  registers the atom via /atoms/register).
 - No pricing, cost, or billing figure appears anywhere in this API or
   its documentation because none has been set — do not infer or
   fabricate one from context.

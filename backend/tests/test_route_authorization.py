@@ -24,7 +24,14 @@ from main import app  # noqa: E402
 
 # Ops routes are the only ones allowed to skip policy evaluation. /auth/login
 # is the one route that must run before any principal exists.
-ALLOWED_UNGATED_PATHS = {"/healthz", "/readyz", "/auth/login"}
+ALLOWED_UNGATED_PATHS = {
+    "/healthz", "/readyz", "/auth/login",
+    # Deliberately public agent-discovery surface: a cold agent must be
+    # able to reach these with zero prior credential. None of them read
+    # or write tenant-scoped data - registration (which does) still
+    # requires a human operator session via /atoms/register.
+    "/", "/llms.txt", "/v1/capabilities", "/v1/reception/agents/handshake",
+}
 
 # /metrics is gated on "who you are" (any authenticated principal, scoped to
 # their own tenant by ctx), not "what you're allowed to do" - deliberate,
