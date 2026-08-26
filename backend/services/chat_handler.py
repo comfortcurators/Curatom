@@ -1,9 +1,9 @@
 from google import genai
-from core.config import settings
+from core.config import settings, build_genai_client
 from services.directory_fetcher import embed_text
 from services.repository import GlobalRepository
 
-ai = genai.Client(api_key=settings.API_KEY, http_options={'api_version': 'v1beta1'})
+ai = build_genai_client()
 
 async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_id: str):
     query_emb = await embed_text(query)

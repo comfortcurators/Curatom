@@ -6,11 +6,11 @@ import logging
 from google import genai
 from google.genai import types
 from google.cloud.firestore_v1.vector import Vector
-from core.config import settings
+from core.config import settings, build_genai_client
 from core.firestore_client import get_db
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
 
-ai = genai.Client(api_key=settings.API_KEY, http_options={'api_version': 'v1beta1'})
+ai = build_genai_client()
 gemini_sem = asyncio.Semaphore(settings.GEMINI_CONCURRENCY_LIMIT)
 logger = logging.getLogger(__name__)
 

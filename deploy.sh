@@ -7,8 +7,10 @@
 #
 # Usage:
 #   export PROJECT_ID="your-gcp-project"
-#   export GEMINI_API_KEY="your-gemini-key"
 #   ./deploy.sh
+#
+# GEMINI_API_KEY is optional — unset means keyless Vertex AI auth.
+
 #
 # Optional overrides: REGION, SERVICE_NAME, SERVICE_ACCOUNT_NAME, DEMO_USERNAME
 
@@ -23,10 +25,10 @@ if [[ -z "${PROJECT_ID:-}" ]]; then
   echo "ERROR: PROJECT_ID is not set." >&2
   exit 1
 fi
-if [[ -z "${GEMINI_API_KEY:-}" ]]; then
-  echo "ERROR: GEMINI_API_KEY is not set." >&2
-  exit 1
-fi
+# GEMINI_API_KEY is OPTIONAL. Left unset, the backend authenticates to Gemini
+# through Vertex AI using the Cloud Run service account's Application Default
+# Credentials - no key to store, leak, or rotate, and usage bills to this
+# project. Set it only to force the Developer API instead.
 
 SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
@@ -64,6 +66,13 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --role="roles/datastore.user" \
   --condition=None >/dev/null
 
+# Required for keyless Gemini access through Vertex AI.
+echo "==> Granting roles/aiplatform.user"
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" \
+  --role="roles/aiplatform.user" \
+  --condition=None >/dev/null
+
 # ---------------------------------------------------------------------------
 # 3. Secrets — created once, reused across revisions.
 #
@@ -86,7 +95,15 @@ create_secret_if_absent() {
 
 create_secret_if_absent "curatom-jwt-secret"    "$(openssl rand -base64 48)"
 create_secret_if_absent "curatom-demo-password" "$(openssl rand -base64 32)"
-create_secret_if_absent "curatom-api-key"       "${GEMINI_API_KEY}"
+
+if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+  create_secret_if_absent "curatom-api-key" "${GEMINI_API_KEY}"
+  GEMINI_SECRET_ARG="API_KEY=curatom-api-key:latest,"
+  echo "==> Gemini auth: Developer API (GEMINI_API_KEY provided)"
+else
+  GEMINI_SECRET_ARG=""
+  echo "==> Gemini auth: Vertex AI via service account (no API key needed)"
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Firestore: rules + indexes
@@ -120,7 +137,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --service-account "${SERVICE_ACCOUNT_EMAIL}" \
   --allow-unauthenticated \
   --set-env-vars "PROJECT_ID=${PROJECT_ID},LOCATION=${REGION},DEMO_USERNAME=${DEMO_USERNAME}" \
-  --set-secrets "JWT_SECRET=curatom-jwt-secret:latest,DEMO_PASSWORD=curatom-demo-password:latest,API_KEY=curatom-api-key:latest"
+  --set-secrets "${GEMINI_SECRET_ARG}JWT_SECRET=curatom-jwt-secret:latest,DEMO_PASSWORD=curatom-demo-password:latest"
 
 BACKEND_URL="$(gcloud run services describe "${SERVICE_NAME}" \
   --region "${REGION}" --format='value(status.url)')"

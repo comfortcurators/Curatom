@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.cloud.firestore_v1.vector import Vector
-from core.config import settings
+from core.config import settings, build_genai_client
 from core.security import (
     hash_key,
     resolve_auth,
@@ -93,7 +93,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Atom-Key", "X-Request-Id"],
 )
 
-ai = genai.Client(api_key=settings.API_KEY, http_options={'api_version': 'v1beta1'})
+ai = build_genai_client()
 
 # --- Ops & Telemetry ---
 @app.get("/healthz")

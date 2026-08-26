@@ -1,12 +1,12 @@
 import json
 from typing import Dict, Any
 from google import genai
-from core.config import settings
+from core.config import settings, build_genai_client
 from core.security import AuthContext
 from services.repository import TenantScopedRepository, GlobalRepository
 from services.directory_fetcher import embed_text
 
-ai = genai.Client(api_key=settings.API_KEY, http_options={"api_version": "v1beta1"})
+ai = build_genai_client()
 
 
 class TaskmasterOrchestrator:
