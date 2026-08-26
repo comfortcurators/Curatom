@@ -103,6 +103,22 @@ async def healthz():
     return {"status": "ok", "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()}
 
 
+@app.get("/debug/auth-fingerprint")
+async def debug_auth_fingerprint():
+    # TEMPORARY diagnostic — never returns the actual credential, only a
+    # truncated hash fingerprint, so a login mismatch can be compared
+    # against `echo -n '<value>' | sha256sum` without exposing the secret
+    # itself. Remove once the DEMO_USERNAME/DEMO_PASSWORD mismatch is
+    # resolved; this should not stay in a shipped build.
+    from core.security import DEMO_USERNAME as _u, DEMO_PASSWORD as _p
+    return {
+        "demo_username_fingerprint": hashlib.sha256(_u.encode()).hexdigest()[:12],
+        "demo_password_fingerprint": hashlib.sha256(_p.encode()).hexdigest()[:12],
+        "demo_username_length": len(_u),
+        "demo_password_length": len(_p),
+    }
+
+
 @app.get("/", include_in_schema=False)
 async def root(request: Request):
     """
