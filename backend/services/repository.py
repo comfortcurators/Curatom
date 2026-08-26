@@ -363,12 +363,28 @@ class TenantScopedRepository:
             .where("org_id", "==", self.org_id)\
             .where("tenant_id", "==", self.tenant_id)\
             .order_by("timestamp", direction=firestore.Query.DESCENDING)
-            
+
         if cursor_id:
             cursor_doc = await self.db.collection("recalls").document(cursor_id).get()
             if cursor_doc.exists:
                 query = query.start_after(cursor_doc)
-                
+
+        docs = await query.limit(limit + 1).get()
+        items = [d.to_dict() for d in docs[:limit]]
+        next_cursor = docs[limit].id if len(docs) > limit else None
+        return items, next_cursor
+
+    async def list_audit_logs(self, limit: int = 50, cursor_id: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        query = self.db.collection("audit")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .order_by("timestamp", direction=firestore.Query.DESCENDING)
+
+        if cursor_id:
+            cursor_doc = await self.db.collection("audit").document(cursor_id).get()
+            if cursor_doc.exists:
+                query = query.start_after(cursor_doc)
+
         docs = await query.limit(limit + 1).get()
         items = [d.to_dict() for d in docs[:limit]]
         next_cursor = docs[limit].id if len(docs) > limit else None

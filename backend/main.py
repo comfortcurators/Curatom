@@ -255,7 +255,7 @@ async def llms_txt():
 
 > A tenant-scoped agent registry with policy-aware, residency-enforced,
 > grounded memory recall. Built by Comfort Curators Private Limited on
-> Google Cloud (Cloud Run, Firestore, Vertex AI / Gemini 3.5-flash).
+> Google Cloud (Cloud Run, Firestore, Vertex AI / Gemini 2.5 Flash).
 
 Every route that reads or writes tenant data requires an authorization
 policy check; memory and recall results are filtered by classification
@@ -1043,6 +1043,16 @@ async def list_logs(
 ):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     items, next_cursor = await repo.list_recalls(limit=limit, cursor_id=cursor)
+    return {"items": items, "next_cursor": next_cursor}
+
+@app.get("/audit")
+async def list_audit_trail(
+    cursor: Optional[str] = None,
+    limit: int = 50,
+    ctx: AuthContext = Depends(authorize("audit.read"))
+):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    items, next_cursor = await repo.list_audit_logs(limit=limit, cursor_id=cursor)
     return {"items": items, "next_cursor": next_cursor}
 
 @app.post("/ask")

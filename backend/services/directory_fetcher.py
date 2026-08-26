@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 async def embed_text(text: str) -> list[float]:
-    """Embed text with the stable Gemini Embedding 2 model at the index dimension."""
+    """Embed text with the configured Gemini embedding model at the index dimension."""
     async with gemini_sem:
         response = await ai.aio.models.embed_content(
             model=EMBEDDING_MODEL,
