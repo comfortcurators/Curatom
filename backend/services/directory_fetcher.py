@@ -21,6 +21,42 @@ def _is_rate_limited(exc: BaseException) -> bool:
     return isinstance(exc, ClientError) and getattr(exc, "code", None) == 429
 
 
+class _EmbeddingPacer:
+    """Leaky-bucket limiter for the Vertex AI embedding model.
+
+    Verified against the live project (Service Usage API, 26 Aug 2026):
+    aiplatform.googleapis.com/online_prediction_requests_per_base_model
+    for base_model=gemini-embedding is a hard 5 requests/minute in
+    us-central1 (and every other region checked) - not a soft burst
+    allowance. A caller that fires several embed_text calls back to back
+    with no natural delay between them (the synthetic fixture loader,
+    unlike directory ingestion which has network-bound gaps between
+    calls) exhausts it in well under a second. Pacing calls under this
+    ceiling, rather than only retrying after the fact, is what keeps
+    those callers from 429ing at all.
+    """
+
+    def __init__(self, max_per_minute: int):
+        self._max_per_minute = max_per_minute
+        self._lock = asyncio.Lock()
+        self._call_times: list[float] = []
+
+    async def wait_turn(self) -> None:
+        while True:
+            async with self._lock:
+                now = asyncio.get_event_loop().time()
+                self._call_times = [t for t in self._call_times if now - t < 60]
+                if len(self._call_times) < self._max_per_minute:
+                    self._call_times.append(now)
+                    return
+                sleep_for = 60 - (now - self._call_times[0]) + 0.1
+            await asyncio.sleep(max(sleep_for, 0.1))
+
+
+# One request of headroom under the verified 5/min hard quota.
+_embedding_pacer = _EmbeddingPacer(max_per_minute=4)
+
+
 @retry(
     retry=retry_if_exception(_is_rate_limited),
     wait=wait_exponential(multiplier=2, min=2, max=30),
@@ -30,12 +66,13 @@ def _is_rate_limited(exc: BaseException) -> bool:
 async def embed_text(text: str) -> list[float]:
     """Embed text with the configured Gemini embedding model at the index dimension.
 
-    Vertex AI's per-minute embedding quota is low enough that a normal
-    burst (loading the synthetic fixture, ingesting several directory
-    entries in a row) exceeds it; retry with backoff rather than
-    surfacing a 500 for a transient 429.
+    Paced to stay under the verified per-minute quota (see
+    _EmbeddingPacer); the retry-with-backoff below is a safety net for
+    quota consumed by other traffic sharing the same project, not the
+    primary defense against 429s.
     """
     async with gemini_sem:
+        await _embedding_pacer.wait_turn()
         response = await ai.aio.models.embed_content(
             model=EMBEDDING_MODEL,
             contents=text,

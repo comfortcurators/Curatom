@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TerminalSquare, Play, Loader2, ArrowRight, Database, ShieldAlert, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
 import { api } from '../api';
 import { Atom, Memory } from '../types';
@@ -14,9 +14,17 @@ export const Playground: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [fixtureLoading, setFixtureLoading] = useState(false);
+  const [fixtureProgress, setFixtureProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [result, setResult] = useState<any>(null);
+  const fixturePollRef = useRef<number | null>(null);
 
   const role = localStorage.getItem('curatom_role');
+
+  useEffect(() => {
+    return () => {
+      if (fixturePollRef.current) window.clearInterval(fixturePollRef.current);
+    };
+  }, []);
 
   const initData = async () => {
     try {
@@ -52,13 +60,33 @@ export const Playground: React.FC = () => {
 
   const handleLoadFixture = async () => {
     setFixtureLoading(true);
+    setFixtureProgress(null);
     try {
       const res = await api.loadSyntheticFixture();
-      alert(`Loaded ${res.loaded_records} synthetic Comfort Curators enterprise fixture records.`);
-      await initData();
+      setFixtureProgress({ loaded: 0, total: res.total_records });
+
+      fixturePollRef.current = window.setInterval(async () => {
+        try {
+          const status = await api.getFixtureLoadStatus();
+          setFixtureProgress({ loaded: status.loaded_count, total: status.total_count });
+          if (!status.is_loading) {
+            if (fixturePollRef.current) window.clearInterval(fixturePollRef.current);
+            fixturePollRef.current = null;
+            setFixtureLoading(false);
+            if (status.failure) {
+              alert(`Fixture loading stopped early: ${status.failure}`);
+            }
+            await initData();
+          }
+        } catch (e: any) {
+          if (fixturePollRef.current) window.clearInterval(fixturePollRef.current);
+          fixturePollRef.current = null;
+          setFixtureLoading(false);
+          alert(`Lost track of fixture loading progress: ${e.message}`);
+        }
+      }, 4000);
     } catch (e: any) {
-      alert(`Fixture loading failed: ${e.message}`);
-    } finally {
+      alert(`Fixture loading failed to start: ${e.message}`);
       setFixtureLoading(false);
     }
   };
@@ -110,14 +138,23 @@ export const Playground: React.FC = () => {
           </p>
         </div>
         {role === 'Owner' && (
-          <button
-            onClick={handleLoadFixture}
-            disabled={fixtureLoading}
-            className="flex items-center gap-8 px-14 py-8 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded-md border border-surface-400 transition-colors text-11 font-mono disabled:opacity-50"
-          >
-            {fixtureLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} className="text-accent" />}
-            Seed Synthetic Proving Ground Fixture
-          </button>
+          <div className="flex flex-col items-end gap-6">
+            <button
+              onClick={handleLoadFixture}
+              disabled={fixtureLoading}
+              className="flex items-center gap-8 px-14 py-8 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded-md border border-surface-400 transition-colors text-11 font-mono disabled:opacity-50"
+            >
+              {fixtureLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} className="text-accent" />}
+              Seed Synthetic Proving Ground Fixture
+            </button>
+            {fixtureProgress && (
+              <span className="text-10 font-mono text-ink-secondary">
+                {fixtureLoading
+                  ? `Loading ${fixtureProgress.loaded}/${fixtureProgress.total} records — this runs slowly on purpose, to stay under the embedding provider's rate limit.`
+                  : `Loaded ${fixtureProgress.loaded}/${fixtureProgress.total} records.`}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

@@ -199,7 +199,18 @@ class ApiClient {
 
   // Synthetic Fixtures
   loadSyntheticFixture() {
-    return this.request<{status: string, loaded_records: number, label: string}>('/fixtures/load-synthetic', { method: 'POST' });
+    return this.request<{status: string, total_records: number, label: string, poll: string}>('/fixtures/load-synthetic', { method: 'POST' });
+  }
+
+  getFixtureLoadStatus() {
+    return this.request<{
+      is_loading: boolean;
+      loaded_count: number;
+      total_count: number;
+      completed: boolean;
+      last_run: string | null;
+      failure: string | null;
+    }>('/fixtures/load-synthetic/status');
   }
 
   // Unified Chat
