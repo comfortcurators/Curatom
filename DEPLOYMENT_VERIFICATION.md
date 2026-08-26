@@ -25,12 +25,26 @@ export DEMO_PASSWORD="$(gcloud secrets versions access latest \
 ## 1. Service is reachable and healthy
 
 ```bash
-curl -sS "$BACKEND_URL/healthz"
 curl -sS "$BACKEND_URL/readyz"
 ```
 
-`/readyz` writes a probe document to Firestore. If it fails, the service
-account lacks `roles/datastore.user` or Firestore is not in Native mode.
+`/readyz` reads the excerpts collection count from Firestore. If it fails,
+the service account lacks `roles/datastore.user` or Firestore is not in
+Native mode.
+
+`/healthz` also exists in the app (a plain liveness check with no Firestore
+call) but do not rely on it for external verification: on at least one
+deployment, requests to that exact path never reached the Cloud Run
+container at all — the response carried none of Cloud Run's own
+`server: Google Frontend` / `x-cloud-trace-context` headers that every other
+route, including a genuine in-app 404, always has, and this was true from
+every caller tested, consistently, not a transient blip. Something ahead of
+Cloud Run intercepts that literal path before routing. `/readyz` was
+verified reachable end-to-end under the same conditions and is the
+canonical liveness check for this reason; `/healthz` stays in the code for
+whatever else might call it (a load balancer health check target you
+configure yourself would use it directly, not through this kind of edge
+path), but do not use it to verify a deployment.
 
 ## 2. Unauthenticated access is refused
 

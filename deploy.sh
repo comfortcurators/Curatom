@@ -150,7 +150,7 @@ echo "  1. Retrieve the demo password to log in:"
 echo "       gcloud secrets versions access latest --secret=curatom-demo-password"
 echo
 echo "  2. Verify the live deployment (see DEPLOYMENT_VERIFICATION.md):"
-echo "       curl -sS ${BACKEND_URL}/healthz"
+echo "       curl -sS ${BACKEND_URL}/readyz"
 echo
 echo "  3. Open the app:"
 echo "       ${BACKEND_URL}"

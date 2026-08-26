@@ -130,7 +130,7 @@ async def root(request: Request):
             "openapi": "/openapi.json",
             "docs": "/docs",
             "llms_txt": "/llms.txt",
-            "health": "/healthz",
+            "health": "/readyz",
             "auth_note": (
                 "Handshake and capabilities are public. Every other route "
                 "requires a session token (human login) or an atom API key "
@@ -275,7 +275,7 @@ is stated without being traceable to something actually stored.
 - Public capabilities list: GET /v1/capabilities
 - OpenAPI schema: /openapi.json
 - Interactive docs: /docs
-- Health check: /healthz
+- Health check: /readyz
 
 ## Source & documentation
 
@@ -288,7 +288,7 @@ is stated without being traceable to something actually stored.
 ## Policy notes for agents
 
 - Public, no credential needed: /, /v1/reception/agents/handshake,
-  /v1/capabilities, /healthz, /llms.txt, /docs, /openapi.json, and the
+  /v1/capabilities, /healthz, /readyz, /llms.txt, /docs, /openapi.json, and the
   served frontend.
 - Everything else requires a session token (human login via
   /auth/login) or an atom API key (issued only after a human operator
