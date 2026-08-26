@@ -35,7 +35,7 @@ fi
 
 echo "==> Building frontend against backend: ${BACKEND_URL}"
 cd "$(dirname "$0")/frontend"
-npm ci
+npm ci || npm install
 VITE_API_BASE_URL="${BACKEND_URL}" npm run build
 cd ..
 
