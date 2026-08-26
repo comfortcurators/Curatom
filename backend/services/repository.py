@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional, List, Dict, Any, Tuple
 from google.cloud import firestore
 from google.cloud.firestore_v1.vector import Vector
@@ -208,6 +209,37 @@ class TenantScopedRepository:
     async def list_policies(self) -> List[Dict[str, Any]]:
         docs = await self.db.collection("policies").where("org_id", "==", self.org_id).where("tenant_id", "==", self.tenant_id).get()
         return [d.to_dict() for d in docs]
+
+    # --- Business Context ---
+    # The canonical, human-provided answer to "what is this business and what
+    # should any LLM or agent know before acting on its behalf." One document
+    # per tenant - not versioned history, just the current state, since this
+    # is meant to be corrected in place as the business or its priorities
+    # change, not accumulated as a log.
+    def _context_doc_id(self) -> str:
+        return f"{self.org_id}__{self.tenant_id}"
+
+    async def get_business_context(self) -> Optional[Dict[str, Any]]:
+        doc = await self.db.collection("business_context").document(self._context_doc_id()).get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict()
+        if data.get("org_id") != self.org_id or data.get("tenant_id") != self.tenant_id:
+            return None
+        return data
+
+    async def set_business_context(self, fields: Dict[str, Any]) -> Dict[str, Any]:
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        existing = await self.get_business_context()
+        data = {
+            **fields,
+            "org_id": self.org_id,
+            "tenant_id": self.tenant_id,
+            "created_at": (existing or {}).get("created_at", now_iso),
+            "updated_at": now_iso,
+        }
+        await self.db.collection("business_context").document(self._context_doc_id()).set(data)
+        return data
 
     # --- Memories & Real Cascading Erasure ---
     async def create_memory(self, memory_data: Dict[str, Any]):

@@ -106,6 +106,14 @@ class PolicyEngine:
                 "reason": "Active agent authorized for recall execution."
             }
 
+        if action == "context.read":
+            return {
+                "allowed": True,
+                "deciding_policy_id": "pol_baseline_context_read",
+                "deciding_rule_name": "Business Context Readable By Any Authenticated Principal",
+                "reason": "Any authenticated human or agent principal may read the tenant's business context - it exists specifically so an LLM or agent can ground itself in it before acting.",
+            }
+
         # Default is Deny
         return {
             "allowed": False,

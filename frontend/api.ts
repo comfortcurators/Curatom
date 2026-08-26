@@ -3,6 +3,7 @@ import {
   Atom,
   AtomProfile,
   AuditLogEntry,
+  BusinessContext,
   DirectoryEntry,
   DirectoryStatus,
   Memory,
@@ -197,20 +198,17 @@ class ApiClient {
     return this.request<PaginatedResponse<AuditLogEntry>>(`/audit?${params.toString()}`);
   }
 
-  // Synthetic Fixtures
-  loadSyntheticFixture() {
-    return this.request<{status: string, total_records: number, label: string, poll: string}>('/fixtures/load-synthetic', { method: 'POST' });
+  // Business Context — the canonical answer to what this business is and
+  // what any LLM or agent should know before acting on its behalf.
+  getBusinessContext() {
+    return this.request<{ onboarded: boolean; context: BusinessContext | null }>('/context');
   }
 
-  getFixtureLoadStatus() {
-    return this.request<{
-      is_loading: boolean;
-      loaded_count: number;
-      total_count: number;
-      completed: boolean;
-      last_run: string | null;
-      failure: string | null;
-    }>('/fixtures/load-synthetic/status');
+  setBusinessContext(payload: BusinessContext) {
+    return this.request<{ onboarded: boolean; context: BusinessContext }>('/context', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
   }
 
   // Unified Chat

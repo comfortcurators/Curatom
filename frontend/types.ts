@@ -225,6 +225,19 @@ export interface DirectoryStatus {
   total_cache_lookups: number;
 }
 
+export interface BusinessContext {
+  business_name: string;
+  what_you_do: string;
+  customers: string;
+  current_stack: string;
+  priorities: string;
+  constraints?: string;
+  voice_and_tone?: string;
+  anything_else?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface AuditLogEntry {
   org_id: string;
   tenant_id: string;

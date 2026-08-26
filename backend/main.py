@@ -30,7 +30,6 @@ from services.policy_engine import PolicyEngine, authorize
 from services.directory_fetcher import run_ingestion, embed_text
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
 from services.chat_handler import handle_chat
-from fixtures.synthetic_enterprise import get_synthetic_fixture_records
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from models.schemas import ChatRequest, IdentifyRequest, MemoryCreate
@@ -120,9 +119,12 @@ async def root(request: Request):
             "version": "rv0.2.0",
             "operator": "Comfort Curators Private Limited",
             "description": (
-                "A tenant-scoped agent registry with policy-aware, "
-                "residency-enforced, grounded memory recall."
+                "The canonical record of what this business is and what any "
+                "LLM or agent should know before acting on its behalf — a "
+                "tenant-scoped agent registry with policy-aware, "
+                "residency-enforced, grounded memory recall sits on top of it."
             ),
+            "business_context": "/context",
             "human_reception": "/reception",
             "agent_handshake": "/v1/reception/agents/handshake",
             "human_login": "/auth/login",
@@ -154,6 +156,12 @@ async def public_capabilities():
     return {
         "protocols": ["http"],
         "endpoints": {
+            "business_context": {
+                "method": "GET",
+                "path": "/context",
+                "auth": "session token or atom API key",
+                "purpose": "The founder's own answer to what this business is, who it serves, its current stack, and its priorities — read this before acting on the tenant's behalf. Returns {\"onboarded\": false} honestly if nobody has answered these questions yet; never a fabricated placeholder."
+            },
             "agent_handshake": {
                 "method": "POST",
                 "path": "/v1/reception/agents/handshake",
@@ -265,6 +273,12 @@ is stated without being traceable to something actually stored.
 ## Start here
 
 - Discovery manifest: GET / with `Accept: application/json`
+- Business context (session token or atom API key required): GET /context
+  The founder's own answer to what this business is, who it serves, its
+  current stack, and its priorities. Read this before acting on the
+  tenant's behalf — it's the whole point of this API. Returns
+  `{"onboarded": false}` honestly if the founder hasn't answered these
+  questions yet; never a fabricated placeholder.
 - Agent handshake (no credential required): POST /v1/reception/agents/handshake
   Body: {"model_family_hint": "...", "sample_response": "..."}
   Returns a suggested operational profile grounded against stored
@@ -1063,106 +1077,49 @@ async def ask_query(
     atom_key = ctx.principal_id if ctx.principal_type == "agent" else None
     return await handle_chat(req.query, ctx.role, atom_key, ctx.tenant_id, ctx.org_id)
 
-# --- Synthetic Enterprise Proving Ground Fixture ---
-# Verified live (26 Aug 2026): Vertex AI's gemini-embedding quota is a hard
-# 5 requests/minute per project/region. The fixture is 107 records, so even
-# perfectly paced under that ceiling it takes several minutes - well past
-# Cloud Run's 300s request timeout. Loading it in the request handler
-# always eventually 500s once the fixture grew past a couple dozen
-# records; it must run in the background and be polled, the same pattern
-# already used for directory ingestion below.
-async def _run_fixture_load(org_id: str, tenant_id: str, actor: str) -> None:
-    repo = TenantScopedRepository(org_id, tenant_id)
-    global_repo = GlobalRepository()
-    state_ref = global_repo.db.collection("system").document("fixture_load_state")
-    records = get_synthetic_fixture_records(org_id, tenant_id)
-
-    await state_ref.set({
-        "is_loading": True,
-        "loaded_count": 0,
-        "total_count": len(records),
-        "failure": None,
-    }, merge=True)
-
-    loaded_count = 0
-    try:
-        for item in records:
-            redacted, pii = detect_and_redact_pii(item["content"])
-            emb = await embed_text(redacted)
-
-            await repo.create_memory({
-                "id": item["id"],
-                "region": item["region"],
-                "topic": item["topic"],
-                "classification": item["classification"],
-                "content_redacted": redacted,
-                "embedding": Vector(emb),
-                "embedding_model": EMBEDDING_MODEL,
-                "embedding_dimension": EMBEDDING_DIM,
-                "version": 1,
-                "is_superseded": False,
-                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "metadata": {
-                    **item["metadata"],
-                    "pii_classes": pii
-                },
-                "source": item["source"]
-            })
-            loaded_count += 1
-            await state_ref.set({"loaded_count": loaded_count}, merge=True)
-
-        await repo.write_audit_log({
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "actor": actor,
-            "action": "fixtures.load-synthetic",
-            "resource": f"tenant/{tenant_id}",
-            "details": {"loaded_records": loaded_count}
-        })
-        await state_ref.set({
-            "is_loading": False,
-            "completed": True,
-            "last_run": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        }, merge=True)
-    except Exception as exc:
-        logger.exception("Synthetic fixture load failed")
-        await state_ref.set({"is_loading": False, "failure": str(exc)}, merge=True)
+# --- Business Context ---
+# Curatom's actual job: hold the canonical, founder-provided answer to
+# "what is this business and what should any LLM or agent know before
+# acting on its behalf" - so that intent doesn't get lost or reinvented
+# every time a different model (Claude, GPT, Gemini, whatever's next) is
+# asked to do something. No synthetic or pre-filled data - a tenant that
+# hasn't answered these questions yet simply has no context, and every
+# route below says so honestly rather than fabricating an answer.
+class BusinessContextPayload(BaseModel):
+    business_name: str
+    what_you_do: str
+    customers: str
+    current_stack: str
+    priorities: str
+    constraints: Optional[str] = None
+    voice_and_tone: Optional[str] = None
+    anything_else: Optional[str] = None
 
 
-@app.post("/fixtures/load-synthetic")
-async def load_synthetic_fixture(ctx: AuthContext = Depends(authorize("atom.create"))):
-    if ctx.role != "Owner":
-        raise HTTPException(403, detail="Fixture loading restricted to Owner")
-
-    global_repo = GlobalRepository()
-    state_doc = await global_repo.db.collection("system").document("fixture_load_state").get()
-    if state_doc.exists and state_doc.to_dict().get("is_loading"):
-        raise HTTPException(409, detail="Fixture load already in progress")
-
-    total_records = len(get_synthetic_fixture_records(ctx.org_id, ctx.tenant_id))
-    asyncio.create_task(_run_fixture_load(ctx.org_id, ctx.tenant_id, ctx.principal_id))
-
-    return {
-        "status": "loading_started",
-        "total_records": total_records,
-        "label": "SYNTHETIC LOAD-TEST FIXTURE — NOT COMPANY FACTS",
-        "poll": "/fixtures/load-synthetic/status",
-    }
+@app.get("/context")
+async def get_business_context(ctx: AuthContext = Depends(authorize("context.read"))):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    context = await repo.get_business_context()
+    if not context:
+        return {"onboarded": False, "context": None}
+    return {"onboarded": True, "context": context}
 
 
-@app.get("/fixtures/load-synthetic/status")
-async def get_fixture_load_status(ctx: AuthContext = Depends(authorize("atom.create"))):
-    global_repo = GlobalRepository()
-    doc = await global_repo.db.collection("system").document("fixture_load_state").get()
-    state = doc.to_dict() if doc.exists else {}
-    return {
-        "is_loading": state.get("is_loading", False),
-        "loaded_count": state.get("loaded_count", 0),
-        "total_count": state.get("total_count", 0),
-        "completed": state.get("completed", False),
-        "last_run": state.get("last_run"),
-        "failure": state.get("failure"),
-    }
+@app.put("/context")
+async def set_business_context(
+    payload: BusinessContextPayload,
+    ctx: AuthContext = Depends(authorize("context.write")),
+):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    saved = await repo.set_business_context(payload.model_dump())
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "context.write",
+        "resource": f"tenant/{ctx.tenant_id}/business_context",
+        "decision": "PERMITTED",
+    })
+    return {"onboarded": True, "context": saved}
 
 
 # Serve the built frontend (frontend/dist, copied into the image by the
