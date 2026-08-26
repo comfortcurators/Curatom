@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// Curatom Enterprise — Firestore security rules.
+//
+// Deny all direct client access. Every read and write must pass through the
+// backend service, which enforces tenant scoping, policy evaluation,
+// classification ceilings, and residency boundaries before touching data.
+//
+// The backend authenticates with a service account. Server-side clients using
+// Application Default Credentials bypass these rules by design; this file is
+// the guarantee that nothing ELSE can reach the data — a browser holding a
+// Firebase config, a leaked web API key, or any unauthenticated caller gets
+// nothing, regardless of what the frontend code does.
+//
+// If a future change adds direct client access to any collection, that access
+// must be added here explicitly and justified in HARDENING_STATUS.md. An
+// accidental `allow read: if true` on any collection below would expose
+// tenant-scoped memories, audit records, and atom metadata across every
+// tenant at once.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

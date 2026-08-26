@@ -9,8 +9,8 @@ in `backend/requirements.txt`:
 
 ```text
 python -m pytest -q
-................                                                         [100%]
-16 passed
+.......................                                                  [100%]
+23 passed
 
 python -m pip check
 No broken requirements found.
@@ -24,6 +24,23 @@ authenticated HTTP 501 task boundaries, Pydantic classification/region
 validation, proxy-forwarded login rate-limit scope, tenant/org rate-limit
 scope, memory classification/region visibility, and the 768-dimension
 Firestore vector-index contract.
+
+It additionally proves, rather than asserts, four boundaries that earlier
+release candidates claimed in prose only:
+
+- **Route authorization coverage** (`test_route_authorization.py`): every
+  non-ops route carries a real `authorize()` policy dependency, and no route
+  resolves a role from a client-supplied header.
+- **Tenant isolation**: a request authenticated as an Owner of a *different*
+  tenant causes the repository to be constructed for that alien tenant and
+  returns no rows — the test asserts the scoping arguments, not merely an
+  empty response.
+- **Subject erasure cascade**: `.delete()` is awaited on every discovered
+  memory, cache entry, recall log, and task record, so the erasure receipt
+  cannot report a deletion that did not happen.
+- **Durable-task boundary**: `GET /tasks` and `GET /tasks/{id}` return HTTP
+  501 with a stable `not_implemented` code, guarding against a future change
+  silently converting the disabled surface into a fake success.
 
 ## Frontend
 

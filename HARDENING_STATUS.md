@@ -51,8 +51,11 @@ candidate, but it is **not production-ready**.
 2. **Durable tasks:** `/tasks` intentionally returns HTTP 501. Queueing,
    retries, idempotency, atomic transitions, dead-letter handling, and worker
    authentication are not implemented.
-3. **ABAC coverage:** memory reads and recall boundaries are enforced, but a
-   complete resource-aware policy context has not been proven for every route.
+3. **ABAC coverage:** route-level authorization is now proven by automated
+   test (`test_route_authorization.py`) — every non-ops route carries an
+   `authorize()` dependency and none reads a role from a client header. What
+   remains unproven is *resource-aware* policy: field-level, time-based, and
+   dynamic condition evaluation within each business operation.
 4. **DSR proof:** live deletion covers scoped memory, cache, recall, and task
    records; backups, exports, provider logs, and retention-policy proof remain
    deployment responsibilities.
@@ -61,6 +64,10 @@ candidate, but it is **not production-ready**.
    without a trusted-proxy policy is unsupported.
 7. **Live verification:** Cloud Run IAM/networking, Firestore indexes, Gemini
    calls, and restore/incident procedures require a configured staging project.
+   `deploy.sh`, `firebase.json`, and `firestore.rules` now provision these,
+   and `DEPLOYMENT_VERIFICATION.md` lists the checks that close this item —
+   but its results table is still empty, so **this boundary remains open until
+   someone runs those checks against a real project and records the output.**
 8. **Google Agent Development Kit (ADK):** not integrated. An earlier draft
    contained a placeholder HTTP client with no corresponding `google-adk`
    dependency and no provisioned agent to call; it has been removed rather
