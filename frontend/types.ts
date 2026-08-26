@@ -225,6 +225,16 @@ export interface DirectoryStatus {
   total_cache_lookups: number;
 }
 
+export interface TeamUser {
+  username: string;
+  role: Role;
+  display_name: string;
+  org_id: string;
+  tenant_id: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface BusinessContext {
   business_name: string;
   what_you_do: string;

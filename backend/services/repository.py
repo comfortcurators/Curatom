@@ -70,6 +70,40 @@ class TenantScopedRepository:
             return None
         return data
 
+    # --- Users (real accounts, one per human teammate) ---
+    async def create_user(self, username: str, password_hash: str, role: str, display_name: str) -> Dict[str, Any]:
+        existing = await self.db.collection("users").document(username).get()
+        if existing.exists:
+            raise ValueError(f"Username '{username}' is already taken")
+        data = {
+            "username": username,
+            "password_hash": password_hash,
+            "role": role,
+            "display_name": display_name,
+            "org_id": self.org_id,
+            "tenant_id": self.tenant_id,
+            "is_active": True,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        await self.db.collection("users").document(username).set(data)
+        return {k: v for k, v in data.items() if k != "password_hash"}
+
+    async def list_users(self) -> List[Dict[str, Any]]:
+        docs = await self.db.collection("users")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .get()
+        return [{k: v for k, v in d.to_dict().items() if k != "password_hash"} for d in docs]
+
+    async def deactivate_user(self, username: str) -> None:
+        doc = await self.db.collection("users").document(username).get()
+        if not doc.exists:
+            raise ValueError("User not found")
+        data = doc.to_dict()
+        if data.get("org_id") != self.org_id or data.get("tenant_id") != self.tenant_id:
+            raise ValueError("User not found in active tenant scope")
+        await self.db.collection("users").document(username).update({"is_active": False})
+
     def _usage_doc_id(self) -> str:
         return f"{self.org_id}__{self.tenant_id}"
 
@@ -212,10 +246,11 @@ class TenantScopedRepository:
 
     # --- Business Context ---
     # The canonical, human-provided answer to "what is this business and what
-    # should any LLM or agent know before acting on its behalf." One document
-    # per tenant - not versioned history, just the current state, since this
-    # is meant to be corrected in place as the business or its priorities
-    # change, not accumulated as a log.
+    # should any LLM or agent know before acting on its behalf." One current
+    # document per tenant, corrected in place as the business or its
+    # priorities change - plus a plain history of what it used to say, so an
+    # agent (or the founder) can see how intent shifted over time rather than
+    # only ever seeing the latest snapshot.
     def _context_doc_id(self) -> str:
         return f"{self.org_id}__{self.tenant_id}"
 
@@ -231,6 +266,14 @@ class TenantScopedRepository:
     async def set_business_context(self, fields: Dict[str, Any]) -> Dict[str, Any]:
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         existing = await self.get_business_context()
+
+        if existing:
+            history_entry = {k: v for k, v in existing.items() if k not in ("org_id", "tenant_id")}
+            history_entry["org_id"] = self.org_id
+            history_entry["tenant_id"] = self.tenant_id
+            history_entry["superseded_at"] = now_iso
+            await self.db.collection("business_context_history").add(history_entry)
+
         data = {
             **fields,
             "org_id": self.org_id,
@@ -240,6 +283,15 @@ class TenantScopedRepository:
         }
         await self.db.collection("business_context").document(self._context_doc_id()).set(data)
         return data
+
+    async def list_business_context_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+        docs = await self.db.collection("business_context_history")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .order_by("superseded_at", direction=firestore.Query.DESCENDING)\
+            .limit(limit)\
+            .get()
+        return [d.to_dict() for d in docs]
 
     # --- Memories & Real Cascading Erasure ---
     async def create_memory(self, memory_data: Dict[str, Any]):

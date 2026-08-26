@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import bcrypt
@@ -152,7 +153,41 @@ def verify_session_token(token: str) -> Dict[str, Any]:
         raise HTTPException(401, detail={"code": "invalid_token", "message": f"Token verification failed: {exc}"})
 
 
+VALID_ROLES = {"Owner", "Tech Lead", "Software Designer", "Technical Reviewer", "Auditor"}
+
+
 async def verify_human_login(username: str, password: str) -> Dict[str, Any]:
+    # Real accounts (core/repository "users" collection) are checked first,
+    # so an Owner-created teammate (CTO, manager, whoever) authenticates the
+    # same way as everyone else. The single env-var demo account is checked
+    # second and kept working indefinitely - it must never stop
+    # authenticating just because real accounts now exist, since it may be
+    # the only account able to create the first real one.
+    #
+    # Bounded with a short timeout deliberately: an unreachable Firestore
+    # (a genuinely offline environment, not a production concern) must fail
+    # this lookup in seconds and fall through to the demo check below,
+    # rather than hang the request indefinitely.
+    user_doc = None
+    try:
+        db = get_db()
+        user_doc = await asyncio.wait_for(db.collection("users").document(username).get(), timeout=5)
+    except (asyncio.TimeoutError, Exception):
+        user_doc = None
+
+    if user_doc is not None and user_doc.exists:
+        user = user_doc.to_dict()
+        if not user.get("is_active", True):
+            raise HTTPException(401, detail={"code": "invalid_credentials", "message": "Invalid username or password"})
+        if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+            raise HTTPException(401, detail={"code": "invalid_credentials", "message": "Invalid username or password"})
+        return {
+            "principal_id": username,
+            "role": user["role"],
+            "org_id": user["org_id"],
+            "tenant_id": user["tenant_id"],
+        }
+
     if username != DEMO_USERNAME:
         raise HTTPException(401, detail={"code": "invalid_credentials", "message": "Invalid username or password"})
 

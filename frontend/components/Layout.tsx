@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Wrench,
   Clock,
+  Users,
 } from 'lucide-react';
 import { Role } from '../types';
 import { APP_NAME, APP_VERSION, COMPANY_NAME, DEFAULT_TENANT_ID } from '../constants';
@@ -115,11 +116,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     return <>{children}</>;
   }
 
+  const primaryNav = role === 'Owner' ? [...PRIMARY_NAV, { path: '/team', icon: Users, label: 'Team' }] : PRIMARY_NAV;
   const isTechnicalActive = TECHNICAL_NAV.some((item) => item.path === location.pathname);
   const pageTitle =
     location.pathname === '/'
       ? 'Overview'
-      : [...PRIMARY_NAV, ...TECHNICAL_NAV].find((item) => item.path === location.pathname)?.label ||
+      : [...primaryNav, ...TECHNICAL_NAV].find((item) => item.path === location.pathname)?.label ||
         location.pathname.replace(/^\/+/, '').replace(/-/g, ' ');
 
   const sidebarContent = (
@@ -147,7 +149,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       <nav className="flex-1 py-16 px-12 space-y-4 overflow-y-auto">
-        {PRIMARY_NAV.map((item) => {
+        {primaryNav.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
           return (

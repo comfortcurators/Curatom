@@ -8,6 +8,7 @@ import os
 import time
 import uuid
 
+import bcrypt
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse
@@ -23,6 +24,7 @@ from core.security import (
     verify_human_login,
     detect_and_redact_pii,
     is_classification_permitted,
+    VALID_ROLES,
 )
 from core.rate_limiter import rate_limiter
 from services.repository import TenantScopedRepository, GlobalRepository
@@ -369,6 +371,68 @@ async def login(req: LoginRequest, request: Request):
         "tenant_id": user["tenant_id"],
         "org_id": user["org_id"]
     }
+
+# --- Team Accounts (real, per-teammate logins) ---
+# Curatom's single demo login predates this; every teammate an Owner adds
+# here gets their own username, password and role instead of sharing one
+# account. verify_human_login checks this collection first, so these
+# authenticate through the exact same /auth/login path.
+class CreateUserSchema(BaseModel):
+    username: str
+    password: str
+    role: str
+    display_name: str
+
+@app.post("/users")
+async def create_user(payload: CreateUserSchema, ctx: AuthContext = Depends(authorize("user.create"))):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can add teammates")
+    if payload.role not in VALID_ROLES:
+        raise HTTPException(400, detail=f"Role must be one of: {', '.join(sorted(VALID_ROLES))}")
+    if len(payload.password) < 8:
+        raise HTTPException(400, detail="Password must be at least 8 characters")
+
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    password_hash = bcrypt.hashpw(payload.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    try:
+        user = await repo.create_user(payload.username, password_hash, payload.role, payload.display_name)
+    except ValueError as exc:
+        raise HTTPException(409, detail=str(exc)) from exc
+
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "user.create",
+        "resource": f"users/{payload.username}",
+        "details": {"role": payload.role},
+    })
+    return user
+
+@app.get("/users")
+async def list_users(ctx: AuthContext = Depends(authorize("user.read"))):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can view the team roster")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    return await repo.list_users()
+
+@app.delete("/users/{username}")
+async def deactivate_user(username: str, ctx: AuthContext = Depends(authorize("user.deactivate"))):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can remove teammates")
+    if username == ctx.principal_id:
+        raise HTTPException(400, detail="You cannot remove your own account")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    try:
+        await repo.deactivate_user(username)
+    except ValueError as exc:
+        raise HTTPException(404, detail=str(exc)) from exc
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "user.deactivate",
+        "resource": f"users/{username}",
+    })
+    return {"status": "deactivated", "username": username}
 
 # --- Autonomous Taskmaster Workflow ---
 # Execution is intentionally disabled until a durable Cloud Tasks/Pub/Sub worker exists.

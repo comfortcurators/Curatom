@@ -4,6 +4,7 @@ import {
   AtomProfile,
   AuditLogEntry,
   BusinessContext,
+  TeamUser,
   DirectoryEntry,
   DirectoryStatus,
   Memory,
@@ -208,6 +209,24 @@ class ApiClient {
     return this.request<{ onboarded: boolean; context: BusinessContext }>('/context', {
       method: 'PUT',
       body: JSON.stringify(payload),
+    });
+  }
+
+  // Team — real per-teammate accounts, Owner-managed.
+  listUsers() {
+    return this.request<TeamUser[]>('/users');
+  }
+
+  createUser(data: { username: string; password: string; role: string; display_name: string }) {
+    return this.request<TeamUser>('/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deactivateUser(username: string) {
+    return this.request<{ status: string; username: string }>(`/users/${encodeURIComponent(username)}`, {
+      method: 'DELETE',
     });
   }
 

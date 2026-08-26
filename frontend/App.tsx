@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Reception } from './pages/Reception';
 import { Overview } from './pages/Overview';
+import { Team } from './pages/Team';
 import { Missions } from './pages/Missions';
 import { Chat } from './pages/Chat';
 import { Fleets } from './pages/Fleets';
@@ -28,6 +29,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/reception" element={<Reception />} />
           <Route path="/" element={<Overview />} />
+          <Route path="/team" element={<Team />} />
           <Route path="/task-worker-status" element={<Missions />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/fleets" element={<Fleets />} />
