@@ -225,6 +225,19 @@ export interface DirectoryStatus {
   total_cache_lookups: number;
 }
 
+export interface AuditLogEntry {
+  org_id: string;
+  tenant_id: string;
+  timestamp: string;
+  action: string;
+  resource: string;
+  actor?: string;
+  decision?: string;
+  reason?: string;
+  request_id?: string;
+  details?: Record<string, unknown>;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   next_cursor: string | null;

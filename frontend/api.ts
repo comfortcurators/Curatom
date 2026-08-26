@@ -1,17 +1,18 @@
 import { API_BASE_URL } from './constants';
-import { 
-  Atom, 
-  AtomProfile, 
-  DirectoryEntry, 
-  DirectoryStatus, 
-  Memory, 
-  RecallLog, 
-  Tenant, 
+import {
+  Atom,
+  AtomProfile,
+  AuditLogEntry,
+  DirectoryEntry,
+  DirectoryStatus,
+  Memory,
+  RecallLog,
+  Tenant,
   Fleet,
   PolicyRule,
   PolicySimulationResult,
   AutonomousTask,
-  PaginatedResponse 
+  PaginatedResponse
 } from './types';
 
 class ApiClient {
@@ -189,10 +190,11 @@ class ApiClient {
     params.set('limit', limit.toString());
     return this.request<PaginatedResponse<RecallLog>>(`/logs?${params.toString()}`); 
   }
-  getAuditTrail(cursor?: string) {
+  getAuditTrail(cursor?: string, limit: number = 50) {
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
-    return this.request<PaginatedResponse<any>>(`/audit?${params.toString()}`);
+    params.set('limit', limit.toString());
+    return this.request<PaginatedResponse<AuditLogEntry>>(`/audit?${params.toString()}`);
   }
 
   // Synthetic Fixtures
