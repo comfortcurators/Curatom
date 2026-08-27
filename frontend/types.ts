@@ -219,6 +219,7 @@ export interface DirectoryStatus {
   total_models: number;
   total_excerpts: number;
   is_ingesting: boolean;
+  is_stale: boolean;
   last_run: string | null;
   cache_hit_rate_pct: number;
   total_cache_hits: number;

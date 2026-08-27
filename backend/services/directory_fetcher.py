@@ -244,16 +244,52 @@ async def ingest_closed_models():
         count += 1
     return count
 
+# How long a run is allowed to sit at is_ingesting=True before a fresh
+# container is willing to treat it as abandoned rather than genuinely in
+# progress. Cloud Run replaces the running container on every deploy, and
+# this ingestion has no per-item heartbeat - only a started_at timestamp -
+# so a container killed mid-run (a redeploy, a scale-down) leaves the flag
+# permanently True with nothing left alive to ever flip it back. Both the
+# startup bootstrap and the manual /directory/ingest trigger refused to
+# start a new run whenever is_ingesting was True, so a single interrupted
+# run could brick ingestion forever. Two hours is generous headroom over
+# a real run at this pacer's throughput (~4 embeds/min), not a guess at
+# "should be done by now."
+STALE_INGESTION_THRESHOLD = datetime.timedelta(hours=2)
+
+
+def is_ingestion_stale(state: dict) -> bool:
+    if not state.get("is_ingesting"):
+        return False
+    started_at = state.get("started_at")
+    if not started_at:
+        # is_ingesting=True with no started_at at all predates this field -
+        # treat as stale rather than blocking ingestion forever on an
+        # unrecoverable, undateable flag.
+        return True
+    try:
+        started = datetime.datetime.fromisoformat(started_at)
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=datetime.timezone.utc)
+    except (ValueError, TypeError):
+        return True
+    return datetime.datetime.now(datetime.timezone.utc) - started > STALE_INGESTION_THRESHOLD
+
+
 async def run_ingestion():
     state_ref = None
     try:
         db = get_db()
         state_ref = db.collection("system").document("ingestion_state")
-        await state_ref.set({"is_ingesting": True, "failures": None}, merge=True)
+        await state_ref.set({
+            "is_ingesting": True,
+            "started_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "failures": None,
+        }, merge=True)
 
         hf_count = await ingest_huggingface(settings.INGESTION_PAGES_LIMIT)
         closed_count = await ingest_closed_models()
-        
+
         await state_ref.set({
             "is_ingesting": False,
             "completed": True,
@@ -264,6 +300,10 @@ async def run_ingestion():
         logger.exception("Directory ingestion failed")
         if state_ref is not None:
             try:
-                await state_ref.set({"is_ingesting": False, "failures": str(exc)}, merge=True)
+                await state_ref.set({
+                    "is_ingesting": False,
+                    "last_run": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "failures": str(exc),
+                }, merge=True)
             except Exception:
                 logger.exception("Failed to persist directory ingestion failure state")

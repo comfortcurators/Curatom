@@ -32,7 +32,7 @@ from core.security import (
 from core.rate_limiter import rate_limiter
 from services.repository import TenantScopedRepository, GlobalRepository
 from services.policy_engine import PolicyEngine, authorize
-from services.directory_fetcher import run_ingestion, embed_text
+from services.directory_fetcher import run_ingestion, embed_text, is_ingestion_stale
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
 from services.chat_handler import handle_chat
 from pydantic import BaseModel, Field
@@ -59,6 +59,9 @@ async def lifespan(app: FastAPI):
         try:
             state = await GlobalRepository().get_ingestion_state()
             if not state.get("completed") and not state.get("is_ingesting"):
+                await run_ingestion()
+            elif is_ingestion_stale(state):
+                logger.warning("Ingestion state was stuck at is_ingesting=True past the staleness threshold - retrying")
                 await run_ingestion()
         except Exception:
             logger.exception("Directory ingestion failed during startup")
@@ -1246,6 +1249,7 @@ async def get_directory_status(ctx: AuthContext = Depends(authorize("directory.r
         "total_models": state.get("models_ingested", 0),
         "total_excerpts": excerpts_count,
         "is_ingesting": state.get("is_ingesting", False),
+        "is_stale": is_ingestion_stale(state),
         "last_run": state.get("last_run"),
         "cache_hit_rate_pct": round(hit_rate, 2),
         "total_cache_hits": total_hits,
@@ -1256,7 +1260,7 @@ async def get_directory_status(ctx: AuthContext = Depends(authorize("directory.r
 async def trigger_ingest(ctx: AuthContext = Depends(authorize("directory.ingest"))):
     global_repo = GlobalRepository()
     state = await global_repo.get_ingestion_state()
-    if state.get("is_ingesting"):
+    if state.get("is_ingesting") and not is_ingestion_stale(state):
         raise HTTPException(409, detail="Ingestion already in progress")
 
     asyncio.create_task(run_ingestion())

@@ -50,15 +50,26 @@ export const Directory: React.FC = () => {
             Global third-party documentation excerpts ingested once and queried to ground adaptive reshaping.
           </p>
         </div>
-        <button 
+        <button
           onClick={handleIngest}
-          disabled={ingesting || status?.is_ingesting}
+          disabled={ingesting || (status?.is_ingesting && !status?.is_stale)}
           className="flex items-center gap-8 px-14 py-7 bg-surface-200 hover:bg-surface-300 text-ink-secondary hover:text-ink-primary rounded-md border border-surface-400 transition-colors text-12 font-mono disabled:opacity-50"
         >
-          {(ingesting || status?.is_ingesting) ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          {(ingesting || status?.is_ingesting) ? 'Ingesting...' : 'Sync Directory'}
+          {(ingesting || (status?.is_ingesting && !status?.is_stale)) ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {ingesting
+            ? 'Ingesting...'
+            : status?.is_ingesting
+              ? (status.is_stale ? 'Retry (previous run stalled)' : 'Ingesting...')
+              : 'Sync Directory'}
         </button>
       </div>
+
+      {status?.is_ingesting && status.is_stale && (
+        <div className="text-12 text-accent font-prose bg-surface-200 border border-surface-400 rounded-md p-12">
+          The last ingestion run never finished — likely interrupted by a deploy — and has been sitting stuck for
+          over 2 hours. It's safe to retry.
+        </div>
+      )}
 
       {status && (
         <div className="bg-surface-200 border border-surface-300 rounded-lg p-16 flex flex-wrap items-center justify-between text-11 font-mono text-ink-secondary gap-12">
