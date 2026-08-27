@@ -19,7 +19,6 @@ import {
   X,
   ChevronDown,
   Wrench,
-  Clock,
   Users,
   ScrollText,
   NotebookPen,
@@ -56,7 +55,6 @@ const TECHNICAL_NAV = [
   { path: '/decisions', icon: ScrollText, label: 'Decision Log' },
   { path: '/sketchbook', icon: NotebookPen, label: 'Sketchbooks' },
   { path: '/playground', icon: TerminalSquare, label: 'Proving Ground' },
-  { path: '/task-worker-status', icon: Clock, label: 'Task Worker Status' },
 ];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
