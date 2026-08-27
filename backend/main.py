@@ -521,10 +521,10 @@ async def get_fleet_health(
 # --- Atoms Registry ---
 class AtomRegisterSchema(BaseModel):
     name: str
-    fleet_id: str
     model_family: str
-    role: str
-    description: str
+    fleet_id: Optional[str] = None
+    role: str = "Assistant"
+    description: str = ""
     labels: Dict[str, str] = Field(default_factory=dict)
 
 @app.post("/atoms/register")
@@ -535,9 +535,15 @@ async def register_atom(
     await rate_limiter.check_rate_limit(ctx.org_id, ctx.tenant_id, 100)
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
 
-    fleet = await repo.get_fleet(atom.fleet_id)
-    if not fleet:
-        raise HTTPException(404, f"Fleet '{atom.fleet_id}' not found")
+    if atom.fleet_id:
+        fleet = await repo.get_fleet(atom.fleet_id)
+        if not fleet:
+            raise HTTPException(404, f"Fleet '{atom.fleet_id}' not found")
+    else:
+        # No fleet named: transparently use (or create) the tenant's
+        # default one. A founder connecting their first agent should
+        # never need to know what a "fleet" is.
+        fleet = await repo.get_or_create_default_fleet()
 
     default_profile = fleet.get("default_profile", {})
     derived_profile = {
@@ -558,7 +564,7 @@ async def register_atom(
     atom_data = {
         "id": atom_id,
         "name": atom.name,
-        "fleet_id": atom.fleet_id,
+        "fleet_id": fleet["id"],
         "model_family": atom.model_family,
         "role": atom.role,
         "description": atom.description,

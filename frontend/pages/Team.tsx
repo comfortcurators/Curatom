@@ -5,12 +5,23 @@ import { TeamUser, Role } from '../types';
 
 const ROLE_OPTIONS: Role[] = ['Owner', 'Tech Lead', 'Software Designer', 'Technical Reviewer', 'Auditor'];
 
+// The role picker speaks in titles a founder actually uses; the value sent
+// to the backend is unchanged (it's what policy.py and every existing
+// record already key off). Display only — no schema change.
+const ROLE_DISPLAY_NAMES: Record<string, string> = {
+  Owner: 'Owner',
+  'Tech Lead': 'CTO',
+  'Software Designer': 'Manager',
+  'Technical Reviewer': 'Reviewer',
+  Auditor: 'Auditor',
+};
+
 const ROLE_DESCRIPTIONS: Record<string, string> = {
   Owner: 'Full access — everything, including managing the team.',
-  'Tech Lead': 'Operational access to agents, memory, recall and policy simulation.',
-  'Software Designer': 'Same operational access as Tech Lead.',
-  'Technical Reviewer': 'Read-only across everything.',
-  Auditor: 'Read-only, restricted to audit logs and the model directory.',
+  'Tech Lead': 'Can run and configure agents, add memory, and simulate policy — the technical operator role.',
+  'Software Designer': 'Same day-to-day access as CTO — for a second technical operator, whatever you call them.',
+  'Technical Reviewer': 'Can see everything, change nothing.',
+  Auditor: 'Read-only, limited to the audit log and the model directory — for compliance review.',
 };
 
 export const Team: React.FC = () => {
@@ -127,7 +138,7 @@ export const Team: React.FC = () => {
             >
               {ROLE_OPTIONS.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {ROLE_DISPLAY_NAMES[r]}
                 </option>
               ))}
             </select>
@@ -168,7 +179,7 @@ export const Team: React.FC = () => {
                   <div>
                     <div className="text-13 text-ink-primary font-medium">{u.display_name}</div>
                     <div className="text-11 text-ink-secondary font-mono">
-                      {u.username} · {u.role}
+                      {u.username} · {ROLE_DISPLAY_NAMES[u.role] || u.role}
                     </div>
                   </div>
                   {u.username !== currentUsername && (

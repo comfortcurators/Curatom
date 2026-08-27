@@ -172,6 +172,32 @@ class TenantScopedRepository:
         return items, next_cursor
 
     # --- Fleets ---
+    async def create_fleet(self, name: str, description: str = "") -> Dict[str, Any]:
+        fleet_id = f"fleet_{uuid.uuid4().hex}"
+        data = {
+            "id": fleet_id,
+            "name": name,
+            "description": description,
+            "default_profile": {},
+            "org_id": self.org_id,
+            "tenant_id": self.tenant_id,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        await self.db.collection("fleets").document(fleet_id).set(data)
+        return data
+
+    async def get_or_create_default_fleet(self) -> Dict[str, Any]:
+        # There was, until this method existed, no way for any tenant to
+        # ever have a fleet: list/get existed, create never did. That made
+        # /atoms/register - which requires a fleet_id - unreachable for
+        # every fresh tenant, not just unfriendly to one. This is the
+        # transparent fallback: a founder connecting their first agent
+        # should never need to understand what a "fleet" is.
+        items, _ = await self.list_fleets(limit=1)
+        if items:
+            return items[0]
+        return await self.create_fleet("Default", "Auto-created for the first connected agent.")
+
     async def list_fleets(self, limit: int = 50, cursor_id: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Optional[str]]:
         query = self.db.collection("fleets")\
             .where("org_id", "==", self.org_id)\

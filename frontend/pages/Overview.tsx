@@ -1,8 +1,119 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, AlertTriangle, Bot, MessageCircleQuestion, Loader2, Pencil } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Bot, MessageCircleQuestion, Loader2, Pencil, Plug, Copy, Check } from 'lucide-react';
 import { api } from '../api';
 import { BusinessContext } from '../types';
 import { BusinessContextForm } from '../components/BusinessContextForm';
+
+const MODEL_FAMILIES = ['Claude', 'GPT', 'Gemini', 'Other'];
+
+const ConnectFirstAgent: React.FC<{ onConnected: () => void }> = ({ onConnected }) => {
+  const [name, setName] = useState('');
+  const [modelFamily, setModelFamily] = useState('Claude');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await api.registerAtom({
+        name,
+        model_family: modelFamily,
+        description: `Connected from the Overview quick-start.`,
+      });
+      setApiKey(res.api_key);
+    } catch (e: any) {
+      setError(e.message || 'Could not connect that agent — try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (apiKey) {
+    return (
+      <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24 space-y-14">
+        <div className="flex items-center gap-10">
+          <CheckCircle2 size={22} className="text-accent" />
+          <h2 className="text-15 text-ink-primary font-medium">{name} is connected</h2>
+        </div>
+        <p className="text-13 text-ink-secondary font-prose">
+          Give it this key — it's shown once and can't be retrieved again. Anywhere that key is used can now read
+          your business context and act within its permissions.
+        </p>
+        <div className="flex items-center gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
+          <code className="flex-1 text-12 font-mono text-ink-primary break-all">{apiKey}</code>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(apiKey);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            className="text-ink-secondary hover:text-ink-primary transition-colors p-6 rounded hover:bg-surface-300 shrink-0"
+            title="Copy"
+          >
+            {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
+          </button>
+        </div>
+        <button
+          onClick={onConnected}
+          className="text-13 text-accent hover:underline"
+        >
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleConnect} className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24 space-y-14">
+      <div className="flex items-center gap-10">
+        <Plug size={20} className="text-accent" />
+        <h2 className="text-15 text-ink-primary font-medium">Connect your first AI agent</h2>
+      </div>
+      <p className="text-13 text-ink-secondary font-prose">
+        Give it a name and which model family it is. That's it — no fleets, roles, or configuration to understand.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+        <div>
+          <label className="block text-11 font-mono text-ink-secondary mb-6">Name</label>
+          <input
+            className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary focus:border-accent outline-none font-prose"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Guest support assistant"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-11 font-mono text-ink-secondary mb-6">Model family</label>
+          <select
+            className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary focus:border-accent outline-none font-mono"
+            value={modelFamily}
+            onChange={(e) => setModelFamily(e.target.value)}
+          >
+            {MODEL_FAMILIES.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {error && <div className="text-13 text-accent font-prose">{error}</div>}
+      <button
+        type="submit"
+        disabled={saving}
+        className="flex items-center gap-8 px-14 py-8 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md transition-colors text-13 font-medium disabled:opacity-50"
+      >
+        {saving ? <Loader2 size={14} className="animate-spin" /> : <Plug size={14} />}
+        Connect
+      </button>
+    </form>
+  );
+};
 
 interface Stat {
   label: string;
@@ -124,6 +235,8 @@ export const Overview: React.FC = () => {
           </>
         )}
       </div>
+
+      {agentCount === 0 && <ConnectFirstAgent onConnected={load} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-16">
         {stats.map((s) => {
