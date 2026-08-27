@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, UserPlus, Trash2, ShieldAlert, Users, Check, X, Clock } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, ShieldAlert, Users, Check, X, Clock, Pencil } from 'lucide-react';
 import { api } from '../api';
-import { TeamUser, Role, PendingApproval } from '../types';
+import { TeamUser, Role, PendingApproval, Tenant } from '../types';
 
 const ROLE_OPTIONS: Role[] = ['Owner', 'Tech Lead', 'Software Designer', 'Technical Reviewer', 'Auditor'];
 
@@ -36,6 +36,45 @@ export const Team: React.FC = () => {
   const [role, setRole] = useState<Role>('Tech Lead');
 
   const currentUsername = localStorage.getItem('curatom_principal_id');
+
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
+
+  const loadTenant = useCallback(async () => {
+    try {
+      const tenants = await api.getTenants();
+      setTenant(tenants[0] || null);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTenant();
+  }, [loadTenant]);
+
+  const startEditingName = () => {
+    setNameDraft(tenant?.name || '');
+    setEditingName(true);
+  };
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = nameDraft.trim();
+    if (!trimmed) return;
+    setSavingName(true);
+    try {
+      await api.renameTenant(trimmed);
+      await loadTenant();
+      setEditingName(false);
+    } catch (e: any) {
+      alert(`Could not rename the workspace: ${e.message}`);
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [approvalsLoading, setApprovalsLoading] = useState(true);
@@ -142,6 +181,51 @@ export const Team: React.FC = () => {
           Give your CTO, a manager, or anyone else their own login and role — instead of everyone sharing one
           account. What they see is scoped to what their role is cleared for.
         </p>
+      </div>
+
+      <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20">
+        <h2 className="text-14 text-ink-primary font-medium mb-8">Workspace name</h2>
+        {editingName ? (
+          <form onSubmit={handleSaveName} className="flex flex-col sm:flex-row gap-8">
+            <input
+              autoFocus
+              className="flex-1 bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary focus:border-accent outline-none font-prose"
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              placeholder="e.g. Comfort Curators"
+              required
+            />
+            <div className="flex gap-8">
+              <button
+                type="submit"
+                disabled={savingName}
+                className="flex items-center gap-6 px-12 py-7 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md text-12 font-medium disabled:opacity-50"
+              >
+                {savingName ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingName(false)}
+                className="px-12 py-7 bg-surface-200 hover:bg-surface-300 text-ink-secondary rounded-md text-12"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="flex items-center justify-between gap-12">
+            <p className="text-13 text-ink-primary font-prose truncate">
+              {tenant?.name || <span className="text-ink-secondary">Not set — showing your raw tenant ID everywhere instead.</span>}
+            </p>
+            <button
+              onClick={startEditingName}
+              className="flex items-center gap-6 px-10 py-5 bg-surface-200 hover:bg-surface-300 text-ink-secondary hover:text-ink-primary rounded text-11 font-mono transition-colors shrink-0"
+            >
+              <Pencil size={12} /> {tenant?.name ? 'Rename' : 'Set a name'}
+            </button>
+          </div>
+        )}
       </div>
 
       {(approvalsLoading || approvals.length > 0) && (

@@ -140,6 +140,12 @@ class ApiClient {
   }
   getFleetHealth(fleetId: string) { return this.request<any>(`/fleets/${fleetId}/health`); }
   getTenants() { return this.request<Tenant[]>('/tenants'); }
+  renameTenant(name: string) {
+    return this.request<{ tenant_id: string; name: string; org_id: string }>('/tenants', {
+      method: 'PATCH',
+      body: JSON.stringify({ name })
+    });
+  }
 
   // Atoms
   getAtoms(cursor?: string, limit: number = 50) { 

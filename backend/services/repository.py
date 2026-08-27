@@ -83,6 +83,11 @@ class TenantScopedRepository:
         await self.db.collection("tenants").document(self.tenant_id).set(data)
         return data
 
+    async def update_tenant_name(self, name: str) -> Dict[str, Any]:
+        await self.db.collection("tenants").document(self.tenant_id).update({"name": name})
+        doc = await self.db.collection("tenants").document(self.tenant_id).get()
+        return doc.to_dict()
+
     # --- Users (real accounts, one per human teammate) ---
     async def create_user(self, username: str, password_hash: str, role: str, display_name: str) -> Dict[str, Any]:
         existing = await self.db.collection("users").document(username).get()

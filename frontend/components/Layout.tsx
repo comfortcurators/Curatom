@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Role } from '../types';
 import { APP_NAME, APP_VERSION, COMPANY_NAME, DEFAULT_TENANT_ID } from '../constants';
+import { api } from '../api';
 
 const LEGAL_NAME = 'Comfort Curators Private Limited';
 const CIN = 'U47912HR2026PTC144195';
@@ -63,6 +64,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [role, setRole] = useState<Role | null>(null);
   const [isAgent, setIsAgent] = useState(false);
   const [tenantId, setTenantId] = useState<string>(DEFAULT_TENANT_ID);
+  const [tenantName, setTenantName] = useState<string>('');
   const [principalName, setPrincipalName] = useState<string>('guest');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [technicalOpen, setTechnicalOpen] = useState<boolean>(() => {
@@ -89,6 +91,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       navigate('/reception');
     }
   }, [location, navigate]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('curatom_session_token');
+    const storedAtomKey = localStorage.getItem('curatom_atom_key');
+    if (!token && !storedAtomKey) return;
+    api.getTenants()
+      .then((tenants) => setTenantName(tenants[0]?.name || ''))
+      .catch(() => setTenantName(''));
+  }, [location.pathname === '/team']);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -147,7 +158,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <label className="text-10 font-mono text-ink-secondary uppercase tracking-wider block mb-4 flex items-center gap-4">
           <Building2 size={12} /> Bound Tenant Scope
         </label>
-        <div className="text-12 font-mono text-ink-primary truncate">{tenantId}</div>
+        <div className="text-12 text-ink-primary truncate font-prose" title={tenantId}>
+          {tenantName || tenantId}
+        </div>
+        {tenantName && <div className="text-10 font-mono text-ink-secondary truncate mt-1">{tenantId}</div>}
       </div>
 
       <nav className="flex-1 py-16 px-12 space-y-4 overflow-y-auto">

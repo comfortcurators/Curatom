@@ -665,6 +665,31 @@ async def list_tenants(ctx: AuthContext = Depends(authorize("tenant.read"))):
         return []
     return [{"tenant_id": tenant["tenant_id"], "name": tenant.get("name", ""), "org_id": tenant["org_id"]}]
 
+class TenantRenamePayload(BaseModel):
+    name: str
+
+@app.patch("/tenants")
+async def rename_tenant(payload: TenantRenamePayload, ctx: AuthContext = Depends(authorize("tenant.write"))):
+    # The sidebar used to show the raw tenant_id (e.g. "tenant_apac_enterprise")
+    # because nothing let an Owner set or change the display name after
+    # registration set it once from business_name. Owner-only, same as
+    # every other workspace-identity action (team management, key rotation).
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can rename the workspace")
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(400, detail="Name cannot be blank")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    tenant = await repo.update_tenant_name(name)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "tenant.rename",
+        "resource": f"tenants/{ctx.tenant_id}",
+        "details": {"name": name},
+    })
+    return {"tenant_id": tenant["tenant_id"], "name": tenant.get("name", ""), "org_id": tenant["org_id"]}
+
 @app.get("/fleets")
 async def list_fleets(
     cursor: Optional[str] = None, 
