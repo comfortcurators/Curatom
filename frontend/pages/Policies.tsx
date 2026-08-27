@@ -129,6 +129,12 @@ export const Policies: React.FC = () => {
           <h2 className="text-13 font-mono text-ink-secondary uppercase tracking-wider">Active Tenant Policies</h2>
           {loading ? (
             <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
+          ) : policies.length === 0 ? (
+            <div className="text-center py-32 text-ink-secondary text-13 font-prose bg-surface-100 border border-surface-300 rounded-lg">
+              No custom policies added yet. The baseline rules — Owner has full access, roles get their standard
+              clearance, everything else is denied by default — are always on and don't need to be listed here.
+              Use the simulator to check what any role or principal can actually do.
+            </div>
           ) : (
             <div className="space-y-12">
               {policies.map(p => (
