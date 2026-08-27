@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Loader2, Zap, ShieldCheck, ShieldAlert, History, KeyRound, Trash2, RefreshCcw, FileEdit, DatabaseZap, FlaskConical } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Loader2, Zap, ShieldCheck, ShieldAlert, History, KeyRound, Trash2, RefreshCcw, FileEdit, DatabaseZap, FlaskConical, Eye, MessageCircleQuestion } from 'lucide-react';
 import { api } from '../api';
 import { RecallLog, AuditLogEntry } from '../types';
 
@@ -14,6 +14,9 @@ const ACTION_META: Record<string, { icon: React.ElementType; tone: 'neutral' | '
   'directory.ingest': { icon: DatabaseZap, tone: 'accent' },
   'fixtures.load-synthetic': { icon: FlaskConical, tone: 'neutral' },
   'recall.residency_denied': { icon: ShieldAlert, tone: 'warning' },
+  'context.read': { icon: Eye, tone: 'neutral' },
+  'decision.read': { icon: Eye, tone: 'neutral' },
+  'ask.query': { icon: MessageCircleQuestion, tone: 'neutral' },
 };
 
 const actionMeta = (action: string) => {
@@ -36,9 +39,13 @@ const formatTime = (iso: string) => {
 };
 
 const auditDetail = (entry: AuditLogEntry): string => {
+  // details is the actually-informative field when present (e.g. the query
+  // text on ask.query) - it used to lose to a boilerplate "Decision:
+  // PERMITTED" whenever an entry carried both, hiding the one thing worth
+  // reading behind a label every permitted action already has.
   if (entry.reason) return entry.reason;
-  if (entry.decision) return `Decision: ${entry.decision}`;
   if (entry.details) return JSON.stringify(entry.details);
+  if (entry.decision) return `Decision: ${entry.decision}`;
   return '—';
 };
 
