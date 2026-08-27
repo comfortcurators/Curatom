@@ -5,6 +5,7 @@ import bcrypt
 import re
 import datetime
 import jwt
+import secrets
 import uuid
 from fastapi import Header, HTTPException
 from typing import Optional, List, Tuple, Dict, Any
@@ -201,6 +202,57 @@ async def verify_human_login(username: str, password: str) -> Dict[str, Any]:
         "role": "Owner",
         "org_id": os.getenv("DEMO_ORG_ID", "org_comfort_curators"),
         "tenant_id": os.getenv("DEMO_TENANT_ID", "tenant_apac_enterprise"),
+    }
+
+
+# --- Backup code (self-service account recovery) ---
+# The user writes this down or photographs it themselves - Curatom never
+# stores or sees that paper/photo, only a bcrypt hash of the code itself.
+# Single-use: redeeming it resets the password and clears the hash, so a
+# fresh code has to be issued before it can be used again.
+def generate_recovery_code() -> str:
+    raw = secrets.token_hex(10).upper()
+    return "-".join(raw[i:i + 4] for i in range(0, len(raw), 4))
+
+
+async def issue_recovery_code(username: str) -> str:
+    db = get_db()
+    doc_ref = db.collection("users").document(username)
+    doc = await doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(404, detail="User not found")
+    code = generate_recovery_code()
+    code_hash = bcrypt.hashpw(code.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    await doc_ref.update({
+        "recovery_code_hash": code_hash,
+        "recovery_code_created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    })
+    return code
+
+
+async def redeem_recovery_code(username: str, code: str, new_password: str) -> Dict[str, Any]:
+    db = get_db()
+    doc_ref = db.collection("users").document(username)
+    doc = await doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(401, detail={"code": "invalid_recovery", "message": "Invalid username or backup code"})
+    user = doc.to_dict()
+    stored_hash = user.get("recovery_code_hash")
+    if not stored_hash or not bcrypt.checkpw(code.encode("utf-8"), stored_hash.encode("utf-8")):
+        raise HTTPException(401, detail={"code": "invalid_recovery", "message": "Invalid username or backup code"})
+    if not user.get("is_active", True):
+        raise HTTPException(401, detail={"code": "invalid_recovery", "message": "Invalid username or backup code"})
+    new_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    await doc_ref.update({
+        "password_hash": new_hash,
+        "recovery_code_hash": None,
+        "recovery_code_created_at": None,
+    })
+    return {
+        "principal_id": username,
+        "role": user["role"],
+        "org_id": user["org_id"],
+        "tenant_id": user["tenant_id"],
     }
 
 

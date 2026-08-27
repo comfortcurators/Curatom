@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, AlertTriangle, Bot, MessageCircleQuestion, Loader2, Pencil, Plug, Copy, Check } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Bot, MessageCircleQuestion, Loader2, Pencil, Plug, Copy, Check, KeyRound, Camera } from 'lucide-react';
 import { api } from '../api';
 import { BusinessContext } from '../types';
 import { BusinessContextForm } from '../components/BusinessContextForm';
@@ -129,6 +129,73 @@ const ConnectFirstAgent: React.FC<{ onConnected: () => void }> = ({ onConnected 
         Connect
       </button>
     </form>
+  );
+};
+
+const BackupCode: React.FC = () => {
+  const [code, setCode] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    if (code && !confirm('Generating a new code replaces your old one — it will stop working. Continue?')) return;
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await api.createRecoveryCode();
+      setCode(res.recovery_code);
+      setCopied(false);
+    } catch (e: any) {
+      setError(e.message || 'Could not generate a backup code — try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24 space-y-14">
+      <div className="flex items-center gap-10">
+        <KeyRound size={20} className="text-accent" />
+        <h2 className="text-15 text-ink-primary font-medium">Your backup code</h2>
+      </div>
+      <p className="text-13 text-ink-secondary font-prose">
+        Lose your password and you lose access — unless you have this. Generate a code, then write it down or{' '}
+        <Camera size={12} className="inline -mt-2" /> photograph it and keep that somewhere safe, like you would a
+        physical key. Curatom never sees or stores that paper or photo — only the code itself, and only as a hash.
+      </p>
+
+      {code ? (
+        <div className="flex items-center gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
+          <code className="flex-1 text-14 font-mono text-ink-primary tracking-wider break-all">{code}</code>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(code);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            className="text-ink-secondary hover:text-ink-primary transition-colors p-6 rounded hover:bg-surface-300 shrink-0"
+            title="Copy"
+          >
+            {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
+          </button>
+        </div>
+      ) : null}
+
+      {error && <div className="text-13 text-accent font-prose">{error}</div>}
+
+      <button
+        onClick={handleGenerate}
+        disabled={generating}
+        className="flex items-center gap-8 px-14 py-8 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded-md border border-surface-400 transition-colors text-13 font-medium disabled:opacity-50"
+      >
+        {generating ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
+        {code ? 'Generate a new code' : 'Generate a backup code'}
+      </button>
+      <p className="text-11 text-ink-secondary font-mono">
+        Shown once. Generating a new one replaces the old — only the latest code works.
+      </p>
+    </div>
   );
 };
 
@@ -278,6 +345,8 @@ export const Overview: React.FC = () => {
         {context.voice_and_tone && <ContextField label="Voice & tone" value={context.voice_and_tone} />}
         {context.anything_else && <ContextField label="Anything else" value={context.anything_else} />}
       </div>
+
+      <BackupCode />
     </div>
   );
 };

@@ -25,6 +25,8 @@ from core.security import (
     detect_and_redact_pii,
     is_classification_permitted,
     VALID_ROLES,
+    issue_recovery_code,
+    redeem_recovery_code,
 )
 from core.rate_limiter import rate_limiter
 from services.repository import TenantScopedRepository, GlobalRepository
@@ -434,6 +436,56 @@ async def register(payload: RegisterRequest, request: Request):
         "role": "Owner",
         "org_id": org_id,
         "tenant_id": tenant_id,
+    }
+
+# --- Backup code (self-service account recovery) ---
+# Shown once, exactly like a password. Curatom's own advice is to write it
+# down or photograph it and keep that somewhere safe - Curatom itself never
+# receives or stores that paper or photo, only a bcrypt hash of the code.
+@app.post("/auth/recovery-code")
+async def create_recovery_code(ctx: AuthContext = Depends(resolve_auth)):
+    if ctx.principal_type != "human":
+        raise HTTPException(403, detail="Only a human account can hold a backup code")
+    code = await issue_recovery_code(ctx.principal_id)
+    return {
+        "recovery_code": code,
+        "warning": (
+            "This code is shown once and replaces any backup code you already had. "
+            "Write it down or photograph it and store that somewhere safe - Curatom "
+            "does not keep a copy of the paper or photo, only this code's hash."
+        ),
+    }
+
+
+class RecoverRequest(BaseModel):
+    username: str
+    recovery_code: str
+    new_password: str
+
+@app.post("/auth/recover")
+async def recover_account(payload: RecoverRequest, request: Request):
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded_for.split(",", 1)[0].strip()
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+    await rate_limiter.check_rate_limit("auth", f"ip:{client_ip}", max_rpm=5)
+
+    if len(payload.new_password) < 8:
+        raise HTTPException(400, detail="Password must be at least 8 characters")
+
+    user = await redeem_recovery_code(payload.username, payload.recovery_code, payload.new_password)
+    token = create_session_token(
+        principal_id=user["principal_id"],
+        role=user["role"],
+        org_id=user["org_id"],
+        tenant_id=user["tenant_id"],
+    )
+    return {
+        "session_token": token,
+        "principal_id": user["principal_id"],
+        "role": user["role"],
+        "tenant_id": user["tenant_id"],
+        "org_id": user["org_id"],
     }
 
 # --- Team Accounts (real, per-teammate logins) ---

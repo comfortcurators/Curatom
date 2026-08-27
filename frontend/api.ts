@@ -78,6 +78,20 @@ class ApiClient {
     );
   }
 
+  createRecoveryCode() {
+    return this.request<{ recovery_code: string; warning: string }>('/auth/recovery-code', { method: 'POST' });
+  }
+
+  recoverAccount(payload: { username: string; recovery_code: string; new_password: string }) {
+    return this.request<{ session_token: string; role: string; tenant_id: string; org_id: string; principal_id: string }>(
+      '/auth/recover',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    );
+  }
+
   // Autonomous Taskmaster
   createTask(goal: string) {
     return this.request<{ task_id: string; status: string; plan: string; steps_count: number }>(

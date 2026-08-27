@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Code, Eye, Briefcase, Cpu, ArrowRight, Loader2, FileSearch, Lock, Building2 } from 'lucide-react';
+import { Shield, Code, Eye, Briefcase, Cpu, ArrowRight, Loader2, FileSearch, Lock, Building2, KeyRound } from 'lucide-react';
 import { Role, AtomProfile } from '../types';
 import { APP_NAME, COMPANY_NAME } from '../constants';
 import { api } from '../api';
 
 export const Reception: React.FC = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'select' | 'human' | 'agent' | 'register'>('select');
+  const [mode, setMode] = useState<'select' | 'human' | 'agent' | 'register' | 'recover'>('select');
 
   // Human Auth State
   const [username, setUsername] = useState('');
@@ -24,6 +24,13 @@ export const Reception: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+
+  // Recovery State (backup code -> new password)
+  const [recUsername, setRecUsername] = useState('');
+  const [recCode, setRecCode] = useState('');
+  const [recNewPassword, setRecNewPassword] = useState('');
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
 
   // Agent Handshake State
   const [agentHint, setAgentHint] = useState('');
@@ -73,6 +80,29 @@ export const Reception: React.FC = () => {
       setRegError(err.message || 'Registration failed');
     } finally {
       setRegLoading(false);
+    }
+  };
+
+  const handleRecover = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecLoading(true);
+    setRecError(null);
+    try {
+      const res = await api.recoverAccount({
+        username: recUsername,
+        recovery_code: recCode,
+        new_password: recNewPassword,
+      });
+      localStorage.setItem('curatom_session_token', res.session_token);
+      localStorage.setItem('curatom_role', res.role);
+      localStorage.setItem('curatom_tenant_id', res.tenant_id);
+      localStorage.setItem('curatom_principal_id', res.principal_id);
+      localStorage.removeItem('curatom_atom_key');
+      navigate('/');
+    } catch (err: any) {
+      setRecError(err.message || 'Recovery failed');
+    } finally {
+      setRecLoading(false);
     }
   };
 
@@ -212,6 +242,80 @@ export const Reception: React.FC = () => {
 
             <p className="text-11 text-ink-secondary font-mono text-center pt-8">
               Roles and grants are verified and resolved server-side from your authenticated principal record.
+            </p>
+            <button
+              type="button"
+              onClick={() => setMode('recover')}
+              className="w-full text-center text-12 text-ink-secondary hover:text-accent underline"
+            >
+              Forgot your password? Use your backup code
+            </button>
+          </form>
+        )}
+
+        {mode === 'recover' && (
+          <form onSubmit={handleRecover} className="space-y-16">
+            <div className="flex items-center justify-between mb-16">
+              <button type="button" onClick={() => setMode('human')} className="text-ink-secondary hover:text-ink-primary text-12 font-mono">← Back</button>
+              <h2 className="text-15 font-medium text-ink-primary font-display flex items-center gap-6">
+                <KeyRound size={14} className="text-accent" /> Recover With Backup Code
+              </h2>
+            </div>
+
+            {recError && (
+              <div className="p-10 bg-accent/10 border border-accent/30 rounded text-12 text-accent font-mono">
+                {recError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Username</label>
+              <input
+                type="text"
+                value={recUsername}
+                onChange={e => setRecUsername(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Backup Code</label>
+              <input
+                type="text"
+                value={recCode}
+                onChange={e => setRecCode(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+                placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">New Password</label>
+              <input
+                type="password"
+                value={recNewPassword}
+                onChange={e => setRecNewPassword(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+                minLength={8}
+                required
+              />
+            </div>
+
+            <div className="pt-8">
+              <button
+                type="submit"
+                disabled={recLoading}
+                className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-accent hover:bg-accent/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
+              >
+                {recLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                Reset Password & Sign In
+              </button>
+            </div>
+
+            <p className="text-11 text-ink-secondary font-mono text-center pt-8">
+              This code only works once. You'll need to generate a new one after this.
             </p>
           </form>
         )}
