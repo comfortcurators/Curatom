@@ -9,6 +9,7 @@ import time
 import uuid
 
 import bcrypt
+import yaml
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse
@@ -1292,6 +1293,47 @@ async def ask_query(
     atom_key = ctx.principal_id if ctx.principal_type == "agent" else None
     return await handle_chat(req.query, ctx.role, atom_key, ctx.tenant_id, ctx.org_id)
 
+# --- Format-aware hand-off ---
+# An atom's profile.format (derived at /atoms/identify handshake time, from
+# the model's own documentation-grounded read of how it's best fed data -
+# see profile derivation above) was captured and stored, but nothing ever
+# read it back - every principal got the same JSON no matter what it asked
+# for. That's the actual mechanism this exists for: talking to an AI isn't
+# complicated, it just wants its context in the shape it parses best, and
+# Curatom already knows that shape per-atom. A human session always gets
+# plain JSON; only an agent's own derived format changes what comes back.
+def _dict_to_markdown(payload: Any, level: int = 0) -> str:
+    indent = "  " * level
+    lines = []
+    if isinstance(payload, dict):
+        for k, v in payload.items():
+            if isinstance(v, (dict, list)) and v:
+                lines.append(f"{indent}- **{k}**:")
+                lines.append(_dict_to_markdown(v, level + 1))
+            else:
+                lines.append(f"{indent}- **{k}**: {v}")
+    elif isinstance(payload, list):
+        for item in payload:
+            if isinstance(item, (dict, list)):
+                lines.append(_dict_to_markdown(item, level))
+            else:
+                lines.append(f"{indent}- {item}")
+    else:
+        lines.append(f"{indent}{payload}")
+    return "\n".join(lines)
+
+
+def render_for_principal(payload: Dict[str, Any], ctx: AuthContext):
+    if ctx.principal_type != "agent" or not ctx.atom_profile:
+        return payload
+    fmt = (ctx.atom_profile.get("format") or "JSON").strip().lower()
+    if fmt.startswith("yaml"):
+        return Response(content=yaml.dump(payload, sort_keys=False, allow_unicode=True), media_type="application/yaml")
+    if fmt.startswith("markdown") or fmt == "md":
+        return Response(content=_dict_to_markdown(payload), media_type="text/markdown")
+    return payload
+
+
 # --- Business Context ---
 # Curatom's actual job: hold the canonical, founder-provided answer to
 # "what is this business and what should any LLM or agent know before
@@ -1315,9 +1357,8 @@ class BusinessContextPayload(BaseModel):
 async def get_business_context(ctx: AuthContext = Depends(authorize("context.read"))):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     context = await repo.get_business_context()
-    if not context:
-        return {"onboarded": False, "context": None}
-    return {"onboarded": True, "context": context}
+    payload = {"onboarded": True, "context": context} if context else {"onboarded": False, "context": None}
+    return render_for_principal(payload, ctx)
 
 
 @app.put("/context")
