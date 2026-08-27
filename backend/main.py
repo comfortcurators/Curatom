@@ -1385,7 +1385,17 @@ async def ask_query(
     ctx: AuthContext = Depends(authorize("recall.execute"))
 ):
     atom_key = ctx.principal_id if ctx.principal_type == "agent" else None
-    return await handle_chat(req.query, ctx.role, atom_key, ctx.tenant_id, ctx.org_id)
+    result = await handle_chat(req.query, ctx.role, atom_key, ctx.tenant_id, ctx.org_id)
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "ask.query",
+        "resource": "ask",
+        "details": {"query": req.query},
+        "decision": "PERMITTED",
+    })
+    return result
 
 # --- Format-aware hand-off ---
 # An atom's profile.format (derived at /atoms/identify handshake time, from
@@ -1452,6 +1462,15 @@ async def get_business_context(ctx: AuthContext = Depends(authorize("context.rea
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     context = await repo.get_business_context()
     payload = {"onboarded": True, "context": context} if context else {"onboarded": False, "context": None}
+    # Reads were previously silent - a founder had no way to know a key had
+    # ever looked at their business context, only that one had changed it.
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "context.read",
+        "resource": f"tenant/{ctx.tenant_id}/business_context",
+        "decision": "PERMITTED",
+    })
     return render_for_principal(payload, ctx)
 
 
@@ -1572,6 +1591,13 @@ async def list_decisions(
 ):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     items, next_cursor = await repo.list_decisions(limit=limit, cursor_id=cursor)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "decision.read",
+        "resource": "decisions",
+        "decision": "PERMITTED",
+    })
     return {"items": items, "next_cursor": next_cursor}
 
 
