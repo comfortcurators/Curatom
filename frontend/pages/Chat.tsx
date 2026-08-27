@@ -100,9 +100,17 @@ export const Chat: React.FC = () => {
                   <ul className="space-y-2">
                     {msg.sources.map((s, i) => (
                       <li key={i} className="truncate">
-                        <a href={s.uri} target="_blank" rel="noreferrer" className="text-accent hover:underline">
-                          {s.uri}
-                        </a>
+                        {/^https?:\/\//.test(s.uri) ? (
+                          <a href={s.uri} target="_blank" rel="noreferrer" className="text-accent hover:underline" title={s.uri}>
+                            {s.title || s.uri}
+                          </a>
+                        ) : (
+                          // Not every source is a navigable URL - the tenant's own
+                          // business context is cited by an internal resource
+                          // path, not a link. Rendering that as a broken <a href>
+                          // was the actual bug: it looked clickable and went nowhere.
+                          <span className="text-ink-secondary" title={s.uri}>{s.title || s.uri}</span>
+                        )}
                       </li>
                     ))}
                   </ul>

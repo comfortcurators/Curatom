@@ -567,7 +567,16 @@ export const Reception: React.FC = () => {
                     <span className="text-ink-secondary block mb-4">Grounded Citations:</span>
                     <ul className="space-y-2 text-11 font-mono text-ink-secondary">
                       {inferredProfile.sources.map((s, i) => (
-                        <li key={i} className="truncate text-accent hover:underline">{s.uri}</li>
+                        <li key={i} className="truncate">
+                          {/^https?:\/\//.test(s.uri) ? (
+                            <a href={s.uri} target="_blank" rel="noreferrer" className="text-accent hover:underline">{s.uri}</a>
+                          ) : (
+                            // Styled like a link before but never was one -
+                            // clicking it did nothing. Only make it a real
+                            // link when it's actually a navigable URL.
+                            <span>{s.uri}</span>
+                          )}
+                        </li>
                       ))}
                     </ul>
                   </div>
