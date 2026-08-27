@@ -981,26 +981,25 @@ async def execute_recall(
     is_stale = (age_hours > retention) or memory.get("is_superseded", False)
     staleness_hours = int(age_hours - retention) if (age_hours > retention) else 0
 
-    # 4. Vector Grounding Excerpt Retrieval from Global Directory
-    query_emb = await embed_text(req.query)
-    grounding_excerpts = await global_repo.search_excerpts_by_model(atom.get("model_family", ""), query_emb, limit=3)
-    
-    grounding_sources = []
-    grounding_context = ""
-    for ge in grounding_excerpts:
-        if ge.get("source_url"):
-            grounding_sources.append({"uri": ge["source_url"], "title": ge.get("section_title", "Doc Excerpt")})
-        if ge.get("text"):
-            grounding_context += ge["text"] + "\n"
-
-    # 5. SHA256 Reshape Caching
+    # 4. SHA256 Reshape Caching - checked before any embedding call, since the
+    # cache key is derived entirely from text (memory id/version, profile,
+    # normalized query). Grounding excerpts require an embedding call that's
+    # rate-paced globally alongside directory ingestion (see
+    # directory_fetcher.py's _embedding_pacer) - a cache hit has no reason to
+    # ever wait behind that. Cache-hit latency was 6.9s in a live founder
+    # walkthrough purely from this embedding call queueing behind an
+    # in-progress ingestion run; it does zero embedding work now.
     profile_hash = hashlib.sha256(json.dumps(atom["profile"], sort_keys=True).encode()).hexdigest()[:16]
     normalized_query = " ".join(req.query.lower().split())
     cache_key = hashlib.sha256(f"{memory['id']}:{memory.get('version', 1)}:{profile_hash}:{normalized_query}".encode()).hexdigest()
-    
+
     cached = await repo.get_cache(cache_key)
     if cached and not is_stale:
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+        # Sources actually used to produce the cached response, stored
+        # alongside it - not recomputed against whatever the directory looks
+        # like now, which could have drifted since the response was cached.
+        cached_grounding_sources = cached.get("grounding_sources", [])
         await repo.write_recall_log({
             "recall_id": f"rec_{uuid.uuid4().hex}",
             "request_id": req_id,
@@ -1016,7 +1015,7 @@ async def execute_recall(
             "latency_ms": elapsed_ms,
             "tokens_consumed": 0,
             "token_metering_method": "cache",
-            "grounding_sources": grounding_sources,
+            "grounding_sources": cached_grounding_sources,
             "subject_ids": memory.get("metadata", {}).get("subject_ids", []),
             "dsr_purged": False,
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -1028,15 +1027,31 @@ async def execute_recall(
             "staleness_hours": staleness_hours,
             "latency_ms": elapsed_ms,
             "was_cached": True,
-            "grounding_sources": grounding_sources,
+            "grounding_sources": cached_grounding_sources,
             "tokens_consumed": 0,
             "token_metering_method": "cache",
             "request_id": req_id
         }
 
+    # 5. Vector Grounding Excerpt Retrieval from Global Directory - only
+    # reached on a cache miss or stale entry, since it's the only step here
+    # that actually needs a fresh LLM call.
+    query_emb = await embed_text(req.query)
+    grounding_excerpts = await global_repo.search_excerpts_by_model(atom.get("model_family", ""), query_emb, limit=3)
+
+    grounding_sources = []
+    grounding_context = ""
+    for ge in grounding_excerpts:
+        if ge.get("source_url"):
+            grounding_sources.append({"uri": ge["source_url"], "title": ge.get("section_title", "Doc Excerpt")})
+        if ge.get("text"):
+            grounding_context += ge["text"] + "\n"
+
     # 6. Dual PII Guard: Prompt strictly consumes content_redacted & grounding_context
+    business_context_for_prompt = await repo.get_business_context()
+    tenant_business_name = (business_context_for_prompt or {}).get("business_name") or "this business"
     prompt = (
-        f"You are Curatom Adaptive Reshaping Engine for fleet '{settings.ENTERPRISE_NAME}'.\n"
+        f"You are Curatom's Adaptive Reshaping Engine for '{tenant_business_name}'.\n"
         f"Grounded Model Documentation Excerpts:\n{grounding_context}\n\n"
         f"Reshape this memory strictly to match target format:\n"
         f"Format: {atom['profile']['format']}\n"
@@ -1073,6 +1088,7 @@ async def execute_recall(
         await repo.set_cache(cache_key, {
             "response": resp.text,
             "memory_id": memory["id"],
+            "grounding_sources": grounding_sources,
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         })
         
