@@ -11,11 +11,16 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
     # Use the repository contract so chat cannot mix legacy/differently-sized vectors.
     dir_results = await GlobalRepository().search_excerpts_by_model("", query_emb, limit=4)
 
+    # Labeled explicitly as technical/supplementary, never as "the source" -
+    # these are generic model documentation excerpts, not evidence for
+    # anything claimed about the business itself. Presenting them
+    # unqualified as sources for a business answer they had no part in
+    # would be its own quiet fabrication.
     sources = []
     directory_text = ""
     for d in dir_results:
         if d.get('source_url'):
-            sources.append({"uri": d['source_url'], "title": d.get('section_title', 'Source')})
+            sources.append({"uri": d['source_url'], "title": f"Technical documentation: {d.get('section_title', 'Source')}"})
         if d.get('text'):
             directory_text += d['text'] + "\n"
 
@@ -46,6 +51,7 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
         if business_context.get("anything_else"):
             context_lines.append(f"Anything else: {business_context['anything_else']}")
         business_context_text = "\n".join(context_lines)
+        sources.insert(0, {"uri": f"tenant/{tenant_id}/business_context", "title": f"{business_name}'s own business context"})
     else:
         business_name = "this business"
         business_context_text = "(No business context has been provided yet - the founder has not answered Curatom's onboarding questions.)"
