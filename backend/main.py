@@ -1192,6 +1192,22 @@ async def set_business_context(
     return {"onboarded": True, "context": saved}
 
 
+@app.delete("/context")
+async def delete_business_context(ctx: AuthContext = Depends(authorize("context.write"))):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can reset business context")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    await repo.delete_business_context()
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "context.delete",
+        "resource": f"tenant/{ctx.tenant_id}/business_context",
+        "decision": "PERMITTED",
+    })
+    return {"onboarded": False, "context": None}
+
+
 # --- Decision Log ---
 # A claim-backed choice, recorded when it's made, and the real outcome tied
 # back to it later - so the next similar choice weighs this company's own

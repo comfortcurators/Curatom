@@ -375,6 +375,13 @@ class TenantScopedRepository:
         await self.db.collection("business_context").document(self._context_doc_id()).set(data)
         return data
 
+    async def delete_business_context(self) -> None:
+        # A real reset, not a soft "cleared" flag - the tenant goes back to
+        # genuinely unonboarded (GET /context returns onboarded: false), the
+        # same state a brand-new tenant is in. Existing history entries are
+        # untouched; this only removes the current snapshot.
+        await self.db.collection("business_context").document(self._context_doc_id()).delete()
+
     async def list_business_context_history(self, limit: int = 50) -> List[Dict[str, Any]]:
         docs = await self.db.collection("business_context_history")\
             .where("org_id", "==", self.org_id)\
