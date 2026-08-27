@@ -40,7 +40,14 @@ export const Playground: React.FC = () => {
       const res = await api.recall(selectedAtomId, selectedMemoryId, query);
       setResult(res);
     } catch (e: any) {
-      alert(`Recall error: ${e.message}`);
+      // A residency refusal throws a real HTTP 403 - it never reaches this
+      // page as {error: ...} in a 200 body, so the styled violation panel
+      // below was dead code until this routed it here instead of an alert.
+      if (/residency/i.test(e.message || '')) {
+        setResult({ error: e.message });
+      } else {
+        alert(`Recall error: ${e.message}`);
+      }
     } finally {
       setLoading(false);
     }
