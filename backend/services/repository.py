@@ -71,6 +71,18 @@ class TenantScopedRepository:
             return None
         return data
 
+    async def create_tenant(self, name: str, contact_email: str, contact_phone: Optional[str] = None) -> Dict[str, Any]:
+        data = {
+            "tenant_id": self.tenant_id,
+            "org_id": self.org_id,
+            "name": name,
+            "contact_email": contact_email,
+            "contact_phone": contact_phone,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        await self.db.collection("tenants").document(self.tenant_id).set(data)
+        return data
+
     # --- Users (real accounts, one per human teammate) ---
     async def create_user(self, username: str, password_hash: str, role: str, display_name: str) -> Dict[str, Any]:
         existing = await self.db.collection("users").document(username).get()

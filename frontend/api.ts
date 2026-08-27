@@ -59,10 +59,20 @@ class ApiClient {
   // Auth
   login(username: string, password: string) {
     return this.request<{ session_token: string; role: string; tenant_id: string; org_id: string; principal_id: string }>(
-      '/auth/login', 
+      '/auth/login',
       {
         method: 'POST',
         body: JSON.stringify({ username, password })
+      }
+    );
+  }
+
+  register(payload: { username: string; business_name: string; email: string; phone?: string; password: string }) {
+    return this.request<{ session_token: string; role: string; tenant_id: string; org_id: string; principal_id: string }>(
+      '/auth/register',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
       }
     );
   }

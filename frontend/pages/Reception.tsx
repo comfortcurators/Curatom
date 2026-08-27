@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Code, Eye, Briefcase, Cpu, ArrowRight, Loader2, FileSearch, Lock } from 'lucide-react';
+import { Shield, Code, Eye, Briefcase, Cpu, ArrowRight, Loader2, FileSearch, Lock, Building2 } from 'lucide-react';
 import { Role, AtomProfile } from '../types';
 import { APP_NAME, COMPANY_NAME } from '../constants';
 import { api } from '../api';
 
 export const Reception: React.FC = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'select' | 'human' | 'agent'>('select');
-  
+  const [mode, setMode] = useState<'select' | 'human' | 'agent' | 'register'>('select');
+
   // Human Auth State
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('Tech Lead');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Registration State (any business signs up here, gets its own tenant)
+  const [regUsername, setRegUsername] = useState('');
+  const [regBusinessName, setRegBusinessName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
 
   // Agent Handshake State
   const [agentHint, setAgentHint] = useState('');
@@ -39,6 +48,31 @@ export const Reception: React.FC = () => {
       setLoginError(err.message || 'Authentication failed');
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegLoading(true);
+    setRegError(null);
+    try {
+      const res = await api.register({
+        username: regUsername,
+        business_name: regBusinessName,
+        email: regEmail,
+        phone: regPhone || undefined,
+        password: regPassword,
+      });
+      localStorage.setItem('curatom_session_token', res.session_token);
+      localStorage.setItem('curatom_role', res.role);
+      localStorage.setItem('curatom_tenant_id', res.tenant_id);
+      localStorage.setItem('curatom_principal_id', res.principal_id);
+      localStorage.removeItem('curatom_atom_key');
+      navigate('/');
+    } catch (err: any) {
+      setRegError(err.message || 'Registration failed');
+    } finally {
+      setRegLoading(false);
     }
   };
 
@@ -97,8 +131,8 @@ export const Reception: React.FC = () => {
               Enterprise Identity Verification
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-              <button 
-                onClick={() => setMode('human')} 
+              <button
+                onClick={() => setMode('human')}
                 className="flex flex-col items-center gap-16 p-32 rounded-md border border-surface-300 bg-surface-200 hover:bg-surface-300 hover:border-ink-secondary transition-all group text-center"
               >
                 <Shield size={32} className="text-ink-secondary group-hover:text-accent transition-colors" />
@@ -107,8 +141,8 @@ export const Reception: React.FC = () => {
                   <span className="text-11 text-ink-secondary mt-4 block">Authenticate with server-signed token</span>
                 </div>
               </button>
-              <button 
-                onClick={() => setMode('agent')} 
+              <button
+                onClick={() => setMode('agent')}
                 className="flex flex-col items-center gap-16 p-32 rounded-md border border-surface-300 bg-surface-200 hover:bg-surface-300 hover:border-ink-secondary transition-all group text-center"
               >
                 <Cpu size={32} className="text-ink-secondary group-hover:text-accent transition-colors" />
@@ -118,6 +152,13 @@ export const Reception: React.FC = () => {
                 </div>
               </button>
             </div>
+            <button
+              onClick={() => setMode('register')}
+              className="w-full flex items-center justify-center gap-8 p-16 rounded-md border border-dashed border-surface-400 hover:border-accent hover:text-accent text-ink-secondary transition-all text-13 font-medium"
+            >
+              <Building2 size={16} />
+              New business — register your own tenant
+            </button>
           </div>
         )}
 
@@ -171,6 +212,93 @@ export const Reception: React.FC = () => {
 
             <p className="text-11 text-ink-secondary font-mono text-center pt-8">
               Roles and grants are verified and resolved server-side from your authenticated principal record.
+            </p>
+          </form>
+        )}
+
+        {mode === 'register' && (
+          <form onSubmit={handleRegister} className="space-y-16">
+            <div className="flex items-center justify-between mb-16">
+              <button type="button" onClick={() => setMode('select')} className="text-ink-secondary hover:text-ink-primary text-12 font-mono">← Back</button>
+              <h2 className="text-15 font-medium text-ink-primary font-display flex items-center gap-6">
+                <Building2 size={14} className="text-accent" /> Register Your Business
+              </h2>
+            </div>
+
+            {regError && (
+              <div className="p-10 bg-accent/10 border border-accent/30 rounded text-12 text-accent font-mono">
+                {regError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Business Name</label>
+              <input
+                type="text"
+                value={regBusinessName}
+                onChange={e => setRegBusinessName(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Username</label>
+              <input
+                type="text"
+                value={regUsername}
+                onChange={e => setRegUsername(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Email</label>
+              <input
+                type="email"
+                value={regEmail}
+                onChange={e => setRegEmail(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Phone (optional)</label>
+              <input
+                type="tel"
+                value={regPhone}
+                onChange={e => setRegPhone(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Password</label>
+              <input
+                type="password"
+                value={regPassword}
+                onChange={e => setRegPassword(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+                minLength={8}
+                required
+              />
+            </div>
+
+            <div className="pt-8">
+              <button
+                type="submit"
+                disabled={regLoading}
+                className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-accent hover:bg-accent/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
+              >
+                {regLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                Create Tenant & Sign In
+              </button>
+            </div>
+
+            <p className="text-11 text-ink-secondary font-mono text-center pt-8">
+              You become the Owner of a new, fully isolated tenant. No data is shared with any other business on Curatom.
             </p>
           </form>
         )}

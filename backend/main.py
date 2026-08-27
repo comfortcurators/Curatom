@@ -130,6 +130,7 @@ async def root(request: Request):
             "human_reception": "/reception",
             "agent_handshake": "/v1/reception/agents/handshake",
             "human_login": "/auth/login",
+            "human_register": "/auth/register",
             "capabilities": "/v1/capabilities",
             "openapi": "/openapi.json",
             "docs": "/docs",
@@ -174,6 +175,12 @@ async def public_capabilities():
                 "method": "POST",
                 "path": "/auth/login",
                 "auth": "none (issues a session token)"
+            },
+            "human_register": {
+                "method": "POST",
+                "path": "/auth/register",
+                "auth": "none",
+                "purpose": "Any business signs up here and gets its own isolated tenant — a fresh org_id/tenant_id, a real tenant record, and an Owner account. Not the demo account: a real, standalone business."
             },
             "atom_register": {
                 "method": "POST",
@@ -372,6 +379,63 @@ async def login(req: LoginRequest, request: Request):
         "org_id": user["org_id"]
     }
 
+# --- Self-serve registration (any business gets its own isolated tenant) ---
+class RegisterRequest(BaseModel):
+    username: str
+    business_name: str
+    email: str
+    phone: Optional[str] = None
+    password: str
+
+@app.post("/auth/register")
+async def register(payload: RegisterRequest, request: Request):
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded_for.split(",", 1)[0].strip()
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+    await rate_limiter.check_rate_limit("auth", f"ip:{client_ip}", max_rpm=5)
+
+    if len(payload.password) < 8:
+        raise HTTPException(400, detail="Password must be at least 8 characters")
+    if not payload.username or not payload.business_name or not payload.email:
+        raise HTTPException(400, detail="Username, business name, and email are required")
+
+    org_id = f"org_{uuid.uuid4().hex[:12]}"
+    tenant_id = f"tenant_{uuid.uuid4().hex[:12]}"
+    repo = TenantScopedRepository(org_id, tenant_id)
+
+    await repo.create_tenant(name=payload.business_name, contact_email=payload.email, contact_phone=payload.phone)
+
+    password_hash = bcrypt.hashpw(payload.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    try:
+        user = await repo.create_user(payload.username, password_hash, "Owner", payload.business_name)
+    except ValueError as exc:
+        # Tenant doc was already written; username collision is the only
+        # realistic cause here since org/tenant ids are freshly generated.
+        raise HTTPException(409, detail=str(exc)) from exc
+
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": payload.username,
+        "action": "tenant.register",
+        "resource": f"tenants/{tenant_id}",
+        "details": {"business_name": payload.business_name},
+    })
+
+    token = create_session_token(
+        principal_id=user["username"],
+        role="Owner",
+        org_id=org_id,
+        tenant_id=tenant_id,
+    )
+    return {
+        "session_token": token,
+        "principal_id": user["username"],
+        "role": "Owner",
+        "org_id": org_id,
+        "tenant_id": tenant_id,
+    }
+
 # --- Team Accounts (real, per-teammate logins) ---
 # Curatom's single demo login predates this; every teammate an Owner adds
 # here gets their own username, password and role instead of sharing one
@@ -484,11 +548,13 @@ async def list_tasks(
 # --- Tenants & Fleets ---
 @app.get("/tenants")
 async def list_tenants(ctx: AuthContext = Depends(authorize("tenant.read"))):
-    return [
-        {"tenant_id": "tenant_apac_enterprise", "name": "APAC Fleet Cohort", "region": "SG"},
-        {"tenant_id": "tenant_emea_subsidiary", "name": "EMEA Fleet Cohort", "region": "EU"},
-        {"tenant_id": "tenant_us_travelcorp", "name": "US TravelCorp Cohort", "region": "US"}
-    ]
+    # Curatom is multi-tenant; a caller only ever sees the one tenant their
+    # session or API key is scoped to, never a directory of other businesses.
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    tenant = await repo.get_tenant()
+    if not tenant:
+        return []
+    return [{"tenant_id": tenant["tenant_id"], "name": tenant.get("name", ""), "org_id": tenant["org_id"]}]
 
 @app.get("/fleets")
 async def list_fleets(
