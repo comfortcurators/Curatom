@@ -1,25 +1,44 @@
 # Curatom Enterprise rv0.2.0
 
-Curatom Enterprise is an open-source React and FastAPI staging candidate for a
-tenant-scoped agent registry, policy evaluation, grounded memory recall, data
-residency enforcement, and audit telemetry.
+Curatom Enterprise holds the canonical record of what a business is and what
+it wants, so that intent doesn't get lost or reinvented every time a
+different LLM (Claude, GPT, Gemini, or whatever launches next) is asked to
+act on the business's behalf. That's the actual product. A tenant-scoped
+agent registry, policy evaluation, grounded memory recall, data residency
+enforcement, and audit telemetry sit underneath it as the machinery that
+enforces and records what happens once that intent is acted on.
 
-> **Release boundary:** rv0.2.0 is suitable for controlled evaluation with
-> synthetic data. It is not represented as production-ready. Durable task
-> execution and production identity provisioning are intentionally absent.
+> **Release boundary:** rv0.2.0 is suitable for controlled evaluation. It is
+> not represented as production-ready. Durable task execution and production
+> identity provisioning are intentionally absent.
 
 ## Implemented capabilities
 
+- **Business context** (`/context`) — the founder's own answer to what the
+  business is, who it serves, its current stack, and its priorities. No
+  pre-filled or synthetic data: a tenant that hasn't answered these questions
+  yet has no context, and every route says so honestly. Readable by any
+  authenticated human or agent principal, writable by the Owner.
+- **Decision log** (`/decisions`) — a claim-backed choice (e.g. "this model
+  claims 10x efficiency over that one") recorded alongside the real outcome
+  once it's known, so the next similar choice weighs the business's own
+  track record rather than trusting the same claim again. States facts only;
+  never a recommendation.
+- **Real per-teammate accounts** (`/users`) — Owner, Tech Lead, Manager, etc.
+  as distinct logins with their own role-scoped access, managed by the
+  Owner, instead of one shared demo credential.
 - Tenant- and organization-scoped repositories, quotas, and cost counters.
 - Human session and per-atom key authentication with baseline policy checks.
 - Atom registration, lifecycle transitions, key rotation, and profile
   identification grounded in indexed model documentation.
-- Gemini Embedding 2 vectors at 768 dimensions, with model/dimension migration
-  gates in every active KNN path.
+- Gemini embedding vectors (`gemini-embedding-001`) at 768 dimensions, with
+  model/dimension migration gates in every active KNN path, paced under the
+  provider's verified per-minute quota.
 - Memory recall with classification ceilings, region boundaries, redacted
   content, grounding citations, caching, token metering, and DSR linkage.
 - Clearance filtering on both cursor-based memory listings and vector search.
-- Synthetic multi-region proving-ground data and mutation audit records.
+- A full audit trail (`/audit`) of every mutating operator action, separate
+  from recall telemetry (`/logs`).
 - Explicitly disabled task execution: `/tasks` returns HTTP 501 until a durable
   queue worker is implemented and deployed.
 
@@ -102,13 +121,14 @@ pytest -q
 Firestore/vector integration checks require the emulator or a controlled GCP
 staging project with the included indexes applied.
 
-## Data ethics and synthetic content
+## Data ethics
 
 Comfort Curators Private Limited is the incorporated publisher of this
-software. The fixtures reference that company identity, but every operational
-metric, employee count, booking figure, and synthetic subject identifier in
-`backend/fixtures/synthetic_enterprise.py` is fabricated for multi-region
-policy testing. No real customer or employee data is included.
+software. Earlier releases shipped with a synthetic fixture of fabricated
+company data for testing; it has been removed entirely — there is no seeded
+or pre-filled business data anywhere in this repository. A deployment starts
+with no business context until the Owner answers the onboarding questions
+themselves, and no memory records until an operator creates them.
 
 ## AI assistance disclosure
 
