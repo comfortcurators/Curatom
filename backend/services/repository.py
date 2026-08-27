@@ -101,12 +101,19 @@ class TenantScopedRepository:
         await self.db.collection("users").document(username).set(data)
         return {k: v for k, v in data.items() if k != "password_hash"}
 
+    # Secret-shaped fields that must never leave the server, on any user
+    # response - same discipline as password_hash, which this list already
+    # excluded. email_verification_code_hash was a real leak found live:
+    # GET /users shipped it straight through since only password_hash was
+    # ever stripped here.
+    _SECRET_USER_FIELDS = {"password_hash", "email_verification_code_hash", "recovery_code_hash"}
+
     async def list_users(self) -> List[Dict[str, Any]]:
         docs = await self.db.collection("users")\
             .where("org_id", "==", self.org_id)\
             .where("tenant_id", "==", self.tenant_id)\
             .get()
-        return [{k: v for k, v in d.to_dict().items() if k != "password_hash"} for d in docs]
+        return [{k: v for k, v in d.to_dict().items() if k not in self._SECRET_USER_FIELDS} for d in docs]
 
     async def deactivate_user(self, username: str) -> None:
         doc = await self.db.collection("users").document(username).get()
