@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Code, Eye, Briefcase, Cpu, ArrowRight, Loader2, FileSearch, Lock, Building2, KeyRound } from 'lucide-react';
 import { Role, AtomProfile } from '../types';
-import { APP_NAME, COMPANY_NAME } from '../constants';
+import { APP_NAME, APP_TAGLINE, COMPANY_LEGAL_NAME } from '../constants';
 import { api } from '../api';
 
 export const Reception: React.FC = () => {
@@ -17,6 +17,7 @@ export const Reception: React.FC = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Registration State (any business signs up here, gets its own tenant)
+  const [regFounderName, setRegFounderName] = useState('');
   const [regUsername, setRegUsername] = useState('');
   const [regBusinessName, setRegBusinessName] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -65,6 +66,7 @@ export const Reception: React.FC = () => {
     try {
       const res = await api.register({
         username: regUsername,
+        founder_name: regFounderName,
         business_name: regBusinessName,
         email: regEmail,
         phone: regPhone || undefined,
@@ -147,10 +149,10 @@ export const Reception: React.FC = () => {
     <div className="min-h-screen flex flex-col items-center justify-center relative z-10 font-ui p-24 bg-canvas">
       <div className="text-center mb-36">
         <h1 className="font-display text-48 font-light text-ink-primary mb-8 tracking-tight">
-          {APP_NAME}
+          {APP_NAME} <span className="text-ink-secondary">— {APP_TAGLINE}</span>
         </h1>
         <p className="text-12 text-ink-secondary uppercase tracking-[0.2em] font-mono">
-          {COMPANY_NAME}
+          By {COMPANY_LEGAL_NAME}
         </p>
       </div>
 
@@ -334,6 +336,17 @@ export const Reception: React.FC = () => {
                 {regError}
               </div>
             )}
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Your Name</label>
+              <input
+                type="text"
+                value={regFounderName}
+                onChange={e => setRegFounderName(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent"
+                required
+              />
+            </div>
 
             <div>
               <label className="block text-11 font-mono text-ink-secondary mb-6">Business Name</label>

@@ -1,6 +1,8 @@
 export const APP_NAME = "Curatom";
+export const APP_TAGLINE = "Enterprise Record";
 export const APP_VERSION = "rv0.2.0";
 export const COMPANY_NAME = "Comfort Curators";
+export const COMPANY_LEGAL_NAME = "Comfort Curators Private Limited";
 export const GEMINI_MODEL = "gemini-2.5-flash";
 // Same-origin deployment (frontend served by the backend) sets
 // VITE_API_BASE_URL="" deliberately, so `||` (which treats "" as falsy)

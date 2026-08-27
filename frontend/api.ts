@@ -68,7 +68,7 @@ class ApiClient {
     );
   }
 
-  register(payload: { username: string; business_name: string; email: string; phone?: string; password: string }) {
+  register(payload: { username: string; founder_name: string; business_name: string; email: string; phone?: string; password: string }) {
     return this.request<{ session_token: string; role: string; tenant_id: string; org_id: string; principal_id: string }>(
       '/auth/register',
       {

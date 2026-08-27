@@ -385,6 +385,7 @@ async def login(req: LoginRequest, request: Request):
 # --- Self-serve registration (any business gets its own isolated tenant) ---
 class RegisterRequest(BaseModel):
     username: str
+    founder_name: str
     business_name: str
     email: str
     phone: Optional[str] = None
@@ -400,8 +401,8 @@ async def register(payload: RegisterRequest, request: Request):
 
     if len(payload.password) < 8:
         raise HTTPException(400, detail="Password must be at least 8 characters")
-    if not payload.username or not payload.business_name or not payload.email:
-        raise HTTPException(400, detail="Username, business name, and email are required")
+    if not payload.username or not payload.founder_name or not payload.business_name or not payload.email:
+        raise HTTPException(400, detail="Your name, username, business name, and email are required")
 
     org_id = f"org_{uuid.uuid4().hex[:12]}"
     tenant_id = f"tenant_{uuid.uuid4().hex[:12]}"
@@ -411,7 +412,7 @@ async def register(payload: RegisterRequest, request: Request):
 
     password_hash = bcrypt.hashpw(payload.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     try:
-        user = await repo.create_user(payload.username, password_hash, "Owner", payload.business_name)
+        user = await repo.create_user(payload.username, password_hash, "Owner", payload.founder_name)
     except ValueError as exc:
         # Tenant doc was already written; username collision is the only
         # realistic cause here since org/tenant ids are freshly generated.
