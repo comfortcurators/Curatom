@@ -103,10 +103,11 @@ export const HelpFAQ: React.FC = () => (
       grounded memory recall.
     </p>
     <p>
-      <strong className="text-ink-primary">I can't log in.</strong> Confirm
-      you're using the credentials issued for this deployment. This build
-      uses a single provisioned account per environment, not a general
-      self-service identity system yet.
+      <strong className="text-ink-primary">I can't log in.</strong> Any
+      business can register its own account and get its own isolated
+      workspace — no invitation needed. If you already have one, confirm
+      you're using the right username and password, or use your backup code
+      to reset your password if you generated one.
     </p>
     <p>
       <strong className="text-ink-primary">Why was my recall result
@@ -170,11 +171,13 @@ export const DataWeCollect: React.FC = () => (
   <PageShell title="Data We Collect">
     <p>A concrete list, matched to what the application's schema actually stores:</p>
     <ul className="list-disc list-inside space-y-8">
-      <li><strong className="text-ink-primary">Identity</strong> — principal ID, role, tenant and organization scope.</li>
+      <li><strong className="text-ink-primary">Identity</strong> — principal ID, role, tenant and organization scope. At registration: the email and (optionally) phone number you provide for your own business's tenant record.</li>
+      <li><strong className="text-ink-primary">Business context</strong> — what you write in Curatom's onboarding questions about your business, kept as the authoritative record any connected AI reads from.</li>
       <li><strong className="text-ink-primary">Memories</strong> — the content, classification, and region you assign when creating a memory record.</li>
       <li><strong className="text-ink-primary">Recall activity</strong> — queries submitted and the results returned, logged for audit.</li>
       <li><strong className="text-ink-primary">Atoms (agents)</strong> — registration metadata and lifecycle transitions for agent identities.</li>
-      <li><strong className="text-ink-primary">Audit log</strong> — actor, action, resource, and timestamp for key/rotation, fixture-load, and ingestion-trigger events.</li>
+      <li><strong className="text-ink-primary">Audit log</strong> — actor, action, resource, and timestamp for events like team changes, key rotation, business-context edits, and ingestion triggers.</li>
+      <li><strong className="text-ink-primary">Backup code</strong> — only a one-way hash is stored, never the code itself.</li>
       <li><strong className="text-ink-primary">Session</strong> — a signed session token; no third-party analytics or advertising trackers are embedded in this application.</li>
     </ul>
     <p>
