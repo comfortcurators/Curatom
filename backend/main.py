@@ -1161,7 +1161,16 @@ async def create_memory(
     redacted_content, pii_classes = detect_and_redact_pii(mem.content)
     emb = await embed_text(redacted_content)
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    
+
+    # A human principal has no fleet - only agents (atoms) belong to one.
+    # This used to hardcode "fleet_core_apac" for every memory regardless of
+    # who or what tenant created it, which was simply false for any real
+    # tenant's own fleet (a freshly generated id, never that string).
+    creator_fleet_id = None
+    if ctx.principal_type == "agent":
+        creator_atom = await repo.get_atom(ctx.principal_id)
+        creator_fleet_id = creator_atom.get("fleet_id") if creator_atom else None
+
     mem_data = {
         "id": mem_id,
         "topic": mem.topic,
@@ -1182,8 +1191,9 @@ async def create_memory(
             "pii_classes": pii_classes,
             "subject_ids": mem.subject_ids,
             "provenance": {
-                "atom_id": ctx.principal_id,
-                "fleet_id": "fleet_core_apac",
+                "atom_id": ctx.principal_id if ctx.principal_type == "agent" else None,
+                "created_by": ctx.principal_id,
+                "fleet_id": creator_fleet_id,
                 "timestamp": now_iso
             }
         },
@@ -1219,8 +1229,12 @@ async def list_memories(
 
     # Fail closed for missing or unknown security metadata, and apply the same
     # clearance check to both vector search and cursor-based listing.
+    # The stored "embedding" field is a 768-float vector used only for
+    # server-side vector search - nothing in the frontend ever reads it,
+    # and shipping it over the wire for every memory on every list/search
+    # call was pure wasted payload with no functional purpose.
     filtered = [
-        memory
+        {k: v for k, v in memory.items() if k != "embedding"}
         for memory in items
         if _memory_is_visible_to(ctx, memory)
     ]
@@ -1575,6 +1589,8 @@ async def approve_pending_action(
         redacted_content, pii_classes = detect_and_redact_pii(payload["content"])
         emb = await embed_text(redacted_content)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        requester_atom = await repo.get_atom(approval["requested_by"])
+        requester_fleet_id = requester_atom.get("fleet_id") if requester_atom else None
         mem_data = {
             "id": mem_id,
             "topic": payload["topic"],
@@ -1596,7 +1612,7 @@ async def approve_pending_action(
                 "subject_ids": payload.get("subject_ids", []),
                 "provenance": {
                     "atom_id": approval["requested_by"],
-                    "fleet_id": "fleet_core_apac",
+                    "fleet_id": requester_fleet_id,
                     "timestamp": now_iso,
                 },
             },
