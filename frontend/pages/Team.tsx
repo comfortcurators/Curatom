@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, UserPlus, Trash2, ShieldAlert, Users } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2, UserPlus, Trash2, ShieldAlert, Users, Check, X, Clock } from 'lucide-react';
 import { api } from '../api';
-import { TeamUser, Role } from '../types';
+import { TeamUser, Role, PendingApproval } from '../types';
 
 const ROLE_OPTIONS: Role[] = ['Owner', 'Tech Lead', 'Software Designer', 'Technical Reviewer', 'Auditor'];
 
@@ -36,6 +36,56 @@ export const Team: React.FC = () => {
   const [role, setRole] = useState<Role>('Tech Lead');
 
   const currentUsername = localStorage.getItem('curatom_principal_id');
+
+  const [approvals, setApprovals] = useState<PendingApproval[]>([]);
+  const [approvalsLoading, setApprovalsLoading] = useState(true);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+
+  const loadApprovals = useCallback(async () => {
+    try {
+      const res = await api.getApprovals('pending');
+      setApprovals(res.items);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setApprovalsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadApprovals();
+    const interval = setInterval(loadApprovals, 10000);
+    return () => clearInterval(interval);
+  }, [loadApprovals]);
+
+  const handleDecide = async (id: string, decision: 'approve' | 'deny') => {
+    setDecidingId(id);
+    try {
+      if (decision === 'approve') {
+        await api.approveAction(id);
+      } else {
+        await api.denyAction(id);
+      }
+      await loadApprovals();
+    } catch (e: any) {
+      alert(`Could not ${decision} that action: ${e.message}`);
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
+  const describeApproval = (a: PendingApproval): string => {
+    switch (a.action) {
+      case 'context.write':
+        return 'wants to update your business context';
+      case 'decision.write':
+        return `wants to log a decision: "${a.payload.claim || ''}"`;
+      case 'memory.write':
+        return `wants to add a memory on "${a.payload.topic || ''}"`;
+      default:
+        return `wants to run ${a.action}`;
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -93,6 +143,51 @@ export const Team: React.FC = () => {
           account. What they see is scoped to what their role is cleared for.
         </p>
       </div>
+
+      {(approvalsLoading || approvals.length > 0) && (
+        <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated overflow-hidden">
+          <div className="p-16 border-b border-surface-300 flex items-center gap-8">
+            <Clock size={16} className="text-accent" />
+            <h2 className="text-14 text-ink-primary font-medium">Waiting on your approval</h2>
+          </div>
+          {approvalsLoading ? (
+            <div className="flex justify-center py-24 text-ink-secondary">
+              <Loader2 className="animate-spin" size={20} />
+            </div>
+          ) : (
+            <div className="divide-y divide-surface-300">
+              {approvals.map((a) => (
+                <div key={a.id} className="flex items-center justify-between gap-12 p-14">
+                  <div className="min-w-0">
+                    <div className="text-13 text-ink-primary font-prose truncate">
+                      <span className="font-mono text-11 text-ink-secondary">{a.requested_by}</span> {describeApproval(a)}
+                    </div>
+                    <div className="text-11 text-ink-secondary font-mono mt-2">{new Date(a.created_at).toLocaleString()}</div>
+                  </div>
+                  <div className="flex items-center gap-6 shrink-0">
+                    <button
+                      onClick={() => handleDecide(a.id, 'approve')}
+                      disabled={decidingId === a.id}
+                      className="flex items-center gap-4 px-10 py-6 bg-accent hover:bg-accent/90 text-canvas rounded text-12 font-medium transition-colors disabled:opacity-50"
+                    >
+                      {decidingId === a.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleDecide(a.id, 'deny')}
+                      disabled={decidingId === a.id}
+                      className="flex items-center gap-4 px-10 py-6 bg-surface-300 hover:bg-surface-400 text-ink-primary rounded text-12 font-medium transition-colors disabled:opacity-50"
+                    >
+                      <X size={12} />
+                      Deny
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleCreate} className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20 space-y-16">
         <h2 className="text-14 text-ink-primary font-medium">Add a teammate</h2>

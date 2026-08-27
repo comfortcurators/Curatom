@@ -106,6 +106,19 @@ class PolicyEngine:
                 "reason": "Active agent authorized for recall execution."
             }
 
+        # An agent key registered with requires_approval=true is allowed to
+        # attempt a write - but the route handler never executes it directly;
+        # it queues the write as a pending approval and the Owner decides.
+        # An agent key WITHOUT that flag gets no write access at all, so
+        # existing read-only agent keys are unaffected by this rule.
+        if ctx.principal_type == "agent" and ctx.requires_approval and action in ["context.write", "decision.write", "memory.write"]:
+            return {
+                "allowed": True,
+                "deciding_policy_id": "pol_baseline_agent_gated_write",
+                "deciding_rule_name": "Approval-Gated Agent Write",
+                "reason": "Agent key is approval-gated: this write will be queued for Owner approval, not executed directly."
+            }
+
         if action == "context.read":
             return {
                 "allowed": True,

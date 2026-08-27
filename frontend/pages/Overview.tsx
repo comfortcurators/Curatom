@@ -9,6 +9,7 @@ const MODEL_FAMILIES = ['Claude', 'GPT', 'Gemini', 'Other'];
 const ConnectFirstAgent: React.FC<{ onConnected: () => void }> = ({ onConnected }) => {
   const [name, setName] = useState('');
   const [modelFamily, setModelFamily] = useState('Claude');
+  const [requiresApproval, setRequiresApproval] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -23,6 +24,7 @@ const ConnectFirstAgent: React.FC<{ onConnected: () => void }> = ({ onConnected 
         name,
         model_family: modelFamily,
         description: `Connected from the Overview quick-start.`,
+        requires_approval: requiresApproval,
       });
       setApiKey(res.api_key);
     } catch (e: any) {
@@ -42,6 +44,9 @@ const ConnectFirstAgent: React.FC<{ onConnected: () => void }> = ({ onConnected 
         <p className="text-13 text-ink-secondary font-prose">
           Give it this key — it's shown once and can't be retrieved again. Anywhere that key is used can now read
           your business context and act within its permissions.
+          {requiresApproval && (
+            <> Every write it attempts is queued, not executed — approve or deny each one from the Team page before it takes effect.</>
+          )}
         </p>
         <div className="flex items-center gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
           <code className="flex-1 text-12 font-mono text-ink-primary break-all">{apiKey}</code>
@@ -102,6 +107,18 @@ const ConnectFirstAgent: React.FC<{ onConnected: () => void }> = ({ onConnected 
           </select>
         </div>
       </div>
+      <label className="flex items-start gap-8 p-10 rounded-md border border-surface-400 bg-surface-200 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={requiresApproval}
+          onChange={(e) => setRequiresApproval(e.target.checked)}
+          className="mt-2"
+        />
+        <span className="text-12 text-ink-secondary font-prose">
+          <span className="text-ink-primary font-medium">Require my approval before this key can write anything.</span>{' '}
+          It can still do everything it's capable of, but nothing it adds or changes takes effect until you approve it — you'll see every attempt in the Team page.
+        </span>
+      </label>
       {error && <div className="text-13 text-accent font-prose">{error}</div>}
       <button
         type="submit"

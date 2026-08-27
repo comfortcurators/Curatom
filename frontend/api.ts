@@ -12,6 +12,7 @@ import {
   RecallLog,
   Tenant,
   Fleet,
+  PendingApproval,
   PolicyRule,
   PolicySimulationResult,
   AutonomousTask,
@@ -132,6 +133,17 @@ class ApiClient {
   }
 
   rotateKey(id: string) { return this.request<{api_key: string, grace_period_hours: number}>(`/atoms/${id}/keys/rotate`, { method: 'POST' }); }
+
+  // Approval queue (approval-gated agent keys)
+  getApprovals(status: string = 'pending') {
+    return this.request<{ items: PendingApproval[] }>(`/approvals?status=${status}`);
+  }
+  approveAction(id: string) {
+    return this.request<{ status: string }>(`/approvals/${id}/approve`, { method: 'POST' });
+  }
+  denyAction(id: string) {
+    return this.request<{ status: string }>(`/approvals/${id}/deny`, { method: 'POST' });
+  }
   identifyAtom(data: any) { return this.request<{profile: AtomProfile, sources: any[], matched: boolean}>('/atoms/identify', { method: 'POST', body: JSON.stringify(data) }); }
 
   // Policies

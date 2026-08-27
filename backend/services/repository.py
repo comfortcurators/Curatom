@@ -552,6 +552,61 @@ class TenantScopedRepository:
         audit_data["tenant_id"] = self.tenant_id
         await self.db.collection("audit").add(audit_data)
 
+    # --- Pending approvals (approval-gated atom keys) ---
+    # An atom registered with requires_approval=true never writes directly:
+    # the write it asked for is captured here instead, and only actually
+    # runs once the Owner approves it. Nothing here executes on its own.
+    async def create_pending_approval(self, action: str, resource: str, payload: Dict[str, Any], requested_by: str) -> Dict[str, Any]:
+        approval_id = f"appr_{uuid.uuid4().hex}"
+        data = {
+            "id": approval_id,
+            "org_id": self.org_id,
+            "tenant_id": self.tenant_id,
+            "action": action,
+            "resource": resource,
+            "payload": payload,
+            "requested_by": requested_by,
+            "status": "pending",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "reviewed_by": None,
+            "reviewed_at": None,
+        }
+        await self.db.collection("pending_approvals").document(approval_id).set(data)
+        return data
+
+    async def get_pending_approval(self, approval_id: str) -> Optional[Dict[str, Any]]:
+        doc = await self.db.collection("pending_approvals").document(approval_id).get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict()
+        if data.get("org_id") != self.org_id or data.get("tenant_id") != self.tenant_id:
+            return None
+        return data
+
+    async def list_pending_approvals(self, status: Optional[str] = "pending") -> List[Dict[str, Any]]:
+        query = self.db.collection("pending_approvals")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)
+        if status:
+            query = query.where("status", "==", status)
+        docs = await query.get()
+        return [d.to_dict() for d in docs]
+
+    async def resolve_pending_approval(self, approval_id: str, status: str, reviewed_by: str) -> Dict[str, Any]:
+        approval = await self.get_pending_approval(approval_id)
+        if not approval:
+            raise ValueError("Approval request not found")
+        if approval["status"] != "pending":
+            raise ValueError(f"Approval request is already '{approval['status']}'")
+        updates = {
+            "status": status,
+            "reviewed_by": reviewed_by,
+            "reviewed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        await self.db.collection("pending_approvals").document(approval_id).update(updates)
+        approval.update(updates)
+        return approval
+
     async def list_recalls(self, limit: int = 50, cursor_id: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Optional[str]]:
         query = self.db.collection("recalls")\
             .where("org_id", "==", self.org_id)\

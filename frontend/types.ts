@@ -235,6 +235,18 @@ export interface TeamUser {
   created_at: string;
 }
 
+export interface PendingApproval {
+  id: string;
+  action: string;
+  resource: string;
+  payload: Record<string, any>;
+  requested_by: string;
+  status: 'pending' | 'approved' | 'denied';
+  created_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+}
+
 export interface Decision {
   id: string;
   claim: string;

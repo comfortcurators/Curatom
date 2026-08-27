@@ -592,6 +592,11 @@ class AtomRegisterSchema(BaseModel):
     role: str = "Assistant"
     description: str = ""
     labels: Dict[str, str] = Field(default_factory=dict)
+    # When true, this key can attempt context/decision/memory writes, but
+    # none of them execute on the spot - each is queued as a pending
+    # approval and only runs once the Owner approves it from /approvals.
+    # False (default) keeps the key read-only, same as before this existed.
+    requires_approval: bool = False
 
 @app.post("/atoms/register")
 async def register_atom(
@@ -637,6 +642,7 @@ async def register_atom(
         "labels": atom.labels,
         "profile": derived_profile,
         "status": "active",
+        "requires_approval": atom.requires_approval,
         "api_key_hash": hashed,
         "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "last_seen": datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -1049,6 +1055,27 @@ async def create_memory(
     ctx: AuthContext = Depends(authorize("memory.write"))
 ):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+
+    if ctx.principal_type == "agent" and ctx.requires_approval:
+        approval = await repo.create_pending_approval(
+            action="memory.write",
+            resource="memories",
+            payload=mem.model_dump(),
+            requested_by=ctx.principal_id,
+        )
+        await repo.write_audit_log({
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "actor": ctx.principal_id,
+            "action": "memory.write.queued",
+            "resource": "memories",
+            "details": {"approval_id": approval["id"]},
+        })
+        return {
+            "status": "pending_approval",
+            "approval_id": approval["id"],
+            "message": "This key requires Owner approval before writes take effect. The Owner has been notified.",
+        }
+
     mem_id = f"mem_{uuid.uuid4().hex}"
     
     redacted_content, pii_classes = detect_and_redact_pii(mem.content)
@@ -1247,6 +1274,27 @@ async def set_business_context(
     ctx: AuthContext = Depends(authorize("context.write")),
 ):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+
+    if ctx.principal_type == "agent" and ctx.requires_approval:
+        approval = await repo.create_pending_approval(
+            action="context.write",
+            resource=f"tenant/{ctx.tenant_id}/business_context",
+            payload=payload.model_dump(),
+            requested_by=ctx.principal_id,
+        )
+        await repo.write_audit_log({
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "actor": ctx.principal_id,
+            "action": "context.write.queued",
+            "resource": f"tenant/{ctx.tenant_id}/business_context",
+            "details": {"approval_id": approval["id"]},
+        })
+        return {
+            "status": "pending_approval",
+            "approval_id": approval["id"],
+            "message": "This key requires Owner approval before writes take effect. The Owner has been notified.",
+        }
+
     saved = await repo.set_business_context(payload.model_dump())
     await repo.write_audit_log({
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -1297,6 +1345,27 @@ async def create_decision(
     ctx: AuthContext = Depends(authorize("decision.write")),
 ):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+
+    if ctx.principal_type == "agent" and ctx.requires_approval:
+        approval = await repo.create_pending_approval(
+            action="decision.write",
+            resource="decisions",
+            payload=payload.model_dump(),
+            requested_by=ctx.principal_id,
+        )
+        await repo.write_audit_log({
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "actor": ctx.principal_id,
+            "action": "decision.write.queued",
+            "resource": "decisions",
+            "details": {"approval_id": approval["id"]},
+        })
+        return {
+            "status": "pending_approval",
+            "approval_id": approval["id"],
+            "message": "This key requires Owner approval before writes take effect. The Owner has been notified.",
+        }
+
     decision = await repo.create_decision(payload.claim, payload.decision, payload.reasoning, ctx.principal_id)
     await repo.write_audit_log({
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -1338,6 +1407,116 @@ async def record_decision_outcome(
         "details": {"outcome_result": payload.outcome_result},
     })
     return updated
+
+
+# --- Approval Queue (approval-gated agent keys) ---
+# A key registered with requires_approval=true never writes directly - each
+# attempted write above was captured as a pending_approvals row instead of
+# executing. Nothing here runs on its own; the Owner decides every one of
+# these individually. In-app only for now: there is no email/SMS provider
+# wired into this deployment, so "notified" means visible in this list,
+# not an actual message sent anywhere yet.
+@app.get("/approvals")
+async def list_approvals(
+    status: Optional[str] = "pending",
+    ctx: AuthContext = Depends(authorize("approval.read")),
+):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can view the approval queue")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    return {"items": await repo.list_pending_approvals(status=status)}
+
+
+@app.post("/approvals/{approval_id}/approve")
+async def approve_pending_action(
+    approval_id: str,
+    ctx: AuthContext = Depends(authorize("approval.decide")),
+):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can approve a pending action")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+
+    approval = await repo.get_pending_approval(approval_id)
+    if not approval:
+        raise HTTPException(404, detail="Approval request not found")
+    if approval["status"] != "pending":
+        raise HTTPException(409, detail=f"Approval request is already '{approval['status']}'")
+
+    payload = approval["payload"]
+    result: Dict[str, Any]
+
+    if approval["action"] == "context.write":
+        result = await repo.set_business_context(payload)
+    elif approval["action"] == "decision.write":
+        result = await repo.create_decision(payload["claim"], payload["decision"], payload.get("reasoning"), approval["requested_by"])
+    elif approval["action"] == "memory.write":
+        mem_id = f"mem_{uuid.uuid4().hex}"
+        redacted_content, pii_classes = detect_and_redact_pii(payload["content"])
+        emb = await embed_text(redacted_content)
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        mem_data = {
+            "id": mem_id,
+            "topic": payload["topic"],
+            "region": payload["region"],
+            "classification": payload["classification"],
+            "content_redacted": redacted_content,
+            "embedding": Vector(emb),
+            "embedding_model": EMBEDDING_MODEL,
+            "embedding_dimension": EMBEDDING_DIM,
+            "version": 1,
+            "is_superseded": False,
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "metadata": {
+                "source_query": "Approved agent write",
+                "domain": "Enterprise",
+                "tags": ["manual", payload["region"].lower()],
+                "pii_classes": pii_classes,
+                "subject_ids": payload.get("subject_ids", []),
+                "provenance": {
+                    "atom_id": approval["requested_by"],
+                    "fleet_id": "fleet_core_apac",
+                    "timestamp": now_iso,
+                },
+            },
+            "source": "api_entry",
+        }
+        await repo.create_memory(mem_data)
+        result = {"id": mem_id, "status": "created", "pii_classes": pii_classes}
+    else:
+        raise HTTPException(500, detail=f"Unknown pending action type '{approval['action']}'")
+
+    await repo.resolve_pending_approval(approval_id, "approved", ctx.principal_id)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": f"{approval['action']}.approved",
+        "resource": approval["resource"],
+        "details": {"approval_id": approval_id, "requested_by": approval["requested_by"]},
+    })
+    return {"status": "approved", "approval_id": approval_id, "result": result}
+
+
+@app.post("/approvals/{approval_id}/deny")
+async def deny_pending_action(
+    approval_id: str,
+    ctx: AuthContext = Depends(authorize("approval.decide")),
+):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can deny a pending action")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    try:
+        approval = await repo.resolve_pending_approval(approval_id, "denied", ctx.principal_id)
+    except ValueError as exc:
+        raise HTTPException(404, detail=str(exc)) from exc
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": f"{approval['action']}.denied",
+        "resource": approval["resource"],
+        "details": {"approval_id": approval_id, "requested_by": approval["requested_by"]},
+    })
+    return {"status": "denied", "approval_id": approval_id}
 
 
 # Serve the built frontend (frontend/dist, copied into the image by the

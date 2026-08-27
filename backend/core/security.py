@@ -109,6 +109,7 @@ class AuthContext:
         classification_ceiling: str = "restricted",
         session_id: Optional[str] = None,
         atom_profile: Optional[Dict[str, Any]] = None,
+        requires_approval: bool = False,
     ):
         self.principal_id = principal_id
         self.principal_type = principal_type
@@ -119,6 +120,7 @@ class AuthContext:
         self.classification_ceiling = classification_ceiling
         self.session_id = session_id
         self.atom_profile = atom_profile
+        self.requires_approval = requires_approval
 
 
 def create_session_token(principal_id: str, role: str, org_id: str, tenant_id: str) -> str:
@@ -255,6 +257,7 @@ async def resolve_auth(
             permitted_regions=profile.get("permitted_regions", ["SG", "US", "IN", "EU"]),
             classification_ceiling=profile.get("classification_ceiling", "confidential"),
             atom_profile=profile,
+            requires_approval=atom.get("requires_approval", False),
         )
 
     if authorization and authorization.startswith("Bearer "):
