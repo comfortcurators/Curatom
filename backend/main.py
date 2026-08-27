@@ -650,6 +650,12 @@ class AtomRegisterSchema(BaseModel):
     # approval and only runs once the Owner approves it from /approvals.
     # False (default) keeps the key read-only, same as before this existed.
     requires_approval: bool = False
+    # A profile already derived for this agent (e.g. from
+    # /v1/reception/agents/handshake or /atoms/identify) - grounded against
+    # this tenant's actual documentation, not a guess. When present, it's
+    # used as-is instead of the fleet's generic defaults; any field it
+    # doesn't set still falls back to the fleet default.
+    profile: Optional[Dict[str, Any]] = None
 
 @app.post("/atoms/register")
 async def register_atom(
@@ -670,14 +676,15 @@ async def register_atom(
         fleet = await repo.get_or_create_default_fleet()
 
     default_profile = fleet.get("default_profile", {})
+    given_profile = atom.profile or {}
     derived_profile = {
-        "format": default_profile.get("format", "JSON"),
-        "retention_window_hours": default_profile.get("retention_window_hours", 168),
-        "accuracy_tolerance": default_profile.get("accuracy_tolerance", "High"),
-        "system_persona": default_profile.get("system_persona", "You are a precise enterprise agent."),
-        "max_output_tokens": default_profile.get("max_output_tokens", 2048),
-        "permitted_regions": default_profile.get("permitted_regions", ["SG", "US", "IN", "EU"]),
-        "classification_ceiling": default_profile.get("classification_ceiling", "internal"),
+        "format": given_profile.get("format") or default_profile.get("format", "JSON"),
+        "retention_window_hours": given_profile.get("retention_window_hours") or default_profile.get("retention_window_hours", 168),
+        "accuracy_tolerance": given_profile.get("accuracy_tolerance") or default_profile.get("accuracy_tolerance", "High"),
+        "system_persona": given_profile.get("system_persona") or default_profile.get("system_persona", "You are a precise enterprise agent."),
+        "max_output_tokens": given_profile.get("max_output_tokens") or default_profile.get("max_output_tokens", 2048),
+        "permitted_regions": given_profile.get("permitted_regions") or default_profile.get("permitted_regions", ["SG", "US", "IN", "EU"]),
+        "classification_ceiling": given_profile.get("classification_ceiling") or default_profile.get("classification_ceiling", "internal"),
         "version": 1
     }
 
