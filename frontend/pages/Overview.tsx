@@ -88,7 +88,7 @@ const ConnectFirstAgent: React.FC<{ onConnected: () => void }> = ({ onConnected 
             className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary focus:border-accent outline-none font-prose"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Guest support assistant"
+            placeholder="e.g. Customer support assistant"
             required
           />
         </div>
