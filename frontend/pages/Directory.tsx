@@ -86,6 +86,10 @@ export const Directory: React.FC = () => {
 
       {loading ? (
         <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
+      ) : entries.length === 0 ? (
+        <div className="text-center py-48 text-ink-secondary text-13 font-prose bg-surface-100 border border-surface-300 rounded-lg">
+          Nothing ingested yet. Sync Directory above, or wait for the next scheduled run.
+        </div>
       ) : (
         <div className="space-y-20">
           {entries.map(entry => (

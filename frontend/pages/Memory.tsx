@@ -93,6 +93,10 @@ export const Memory: React.FC = () => {
         <div className="flex justify-center py-48 text-ink-secondary">
           <Loader2 className="animate-spin" size={24} />
         </div>
+      ) : memories.length === 0 ? (
+        <div className="text-center py-48 text-ink-secondary text-13 font-prose bg-surface-100 border border-surface-300 rounded-lg">
+          {search ? `No memories match "${search}".` : 'No memories yet. Agents and teammates with memory.write access add them here.'}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-16">
           {memories.map(memory => (

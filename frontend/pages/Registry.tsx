@@ -113,6 +113,10 @@ export const Registry: React.FC = () => {
         <div className="flex justify-center py-48 text-ink-secondary">
           <Loader2 className="animate-spin" size={24} />
         </div>
+      ) : atoms.length === 0 ? (
+        <div className="text-center py-48 text-ink-secondary text-13 font-prose bg-surface-100 border border-surface-300 rounded-lg">
+          No agents connected yet. Connect one from the Overview page.
+        </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-20">
           {atoms.map(atom => (
