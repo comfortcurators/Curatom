@@ -249,6 +249,20 @@ export interface PendingApproval {
   reviewed_at: string | null;
 }
 
+export interface SketchbookEntry {
+  id: string;
+  owner_id: string;
+  topic: string;
+  content: string;
+  created_at: string;
+}
+
+export interface SketchbookActivity {
+  owner_id: string;
+  topic: string;
+  created_at: string;
+}
+
 export interface Decision {
   id: string;
   claim: string;

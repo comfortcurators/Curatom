@@ -13,6 +13,7 @@ import { Directory } from './pages/Directory';
 import { Memory } from './pages/Memory';
 import { Feed } from './pages/Feed';
 import { Decisions } from './pages/Decisions';
+import { Sketchbook } from './pages/Sketchbook';
 import { Playground } from './pages/Playground';
 import {
   PrivacyPolicy,
@@ -40,6 +41,7 @@ const App: React.FC = () => {
           <Route path="/memory" element={<Memory />} />
           <Route path="/feed" element={<Feed />} />
           <Route path="/decisions" element={<Decisions />} />
+          <Route path="/sketchbook" element={<Sketchbook />} />
           <Route path="/playground" element={<Playground />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/ai-transparency" element={<AITransparency />} />

@@ -13,6 +13,8 @@ import {
   Tenant,
   Fleet,
   PendingApproval,
+  SketchbookEntry,
+  SketchbookActivity,
   PolicyRule,
   PolicySimulationResult,
   AutonomousTask,
@@ -174,6 +176,20 @@ class ApiClient {
   }
   denyAction(id: string) {
     return this.request<{ status: string }>(`/approvals/${id}/deny`, { method: 'POST' });
+  }
+
+  // Sketchbooks
+  writeSketchbook(topic: string, content: string) {
+    return this.request<SketchbookEntry>('/sketchbook', { method: 'POST', body: JSON.stringify({ topic, content }) });
+  }
+  getOwnSketchbook() {
+    return this.request<{ items: SketchbookEntry[] }>('/sketchbook');
+  }
+  getAllSketchbooks() {
+    return this.request<{ items: SketchbookEntry[] }>('/sketchbook/all');
+  }
+  getSketchbookFeed() {
+    return this.request<{ items: SketchbookActivity[] }>('/sketchbook/feed');
   }
   identifyAtom(data: any) { return this.request<{profile: AtomProfile, sources: any[], matched: boolean}>('/atoms/identify', { method: 'POST', body: JSON.stringify(data) }); }
 

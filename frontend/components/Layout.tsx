@@ -22,6 +22,7 @@ import {
   Clock,
   Users,
   ScrollText,
+  NotebookPen,
 } from 'lucide-react';
 import { Role } from '../types';
 import { APP_NAME, APP_VERSION, COMPANY_NAME, DEFAULT_TENANT_ID } from '../constants';
@@ -53,6 +54,7 @@ const TECHNICAL_NAV = [
   { path: '/directory', icon: BookOpen, label: 'Model Directory' },
   { path: '/feed', icon: Activity, label: 'Audit & Telemetry' },
   { path: '/decisions', icon: ScrollText, label: 'Decision Log' },
+  { path: '/sketchbook', icon: NotebookPen, label: 'Sketchbooks' },
   { path: '/playground', icon: TerminalSquare, label: 'Proving Ground' },
   { path: '/task-worker-status', icon: Clock, label: 'Task Worker Status' },
 ];
