@@ -81,7 +81,13 @@ def verify_key(plain_key: str, hashed_key: str) -> bool:
 
 PII_PATTERNS = {
     "email": re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"),
-    "phone": re.compile(r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}"),
+    # Two alternatives: classic NANP 3-3-4 grouping, and a shorter
+    # country-code-prefixed form (e.g. "+1-555-0014") that the 3-3-4
+    # pattern alone never matches because it has no middle group.
+    "phone": re.compile(
+        r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}"
+        r"|\+\d{1,3}[-.\s]?\d{2,4}[-.\s]?\d{3,5}"
+    ),
     "payment_ref": re.compile(r"\b(?:\d[ -]*?){13,16}\b"),
     "gov_id": re.compile(r"\b\d{3}-\d{2}-\d{4}\b|\b[A-Z]{1,2}\d{6,8}\b|\b\d{4}-\d{4}-\d{4}\b"),
     "aadhaar": re.compile(r"\b\d{4}\s?\d{4}\s?\d{4}\b"),
