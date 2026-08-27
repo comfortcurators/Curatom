@@ -786,6 +786,18 @@ async def list_atoms(
 ):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     items, next_cursor = await repo.list_atoms(limit=limit, cursor_id=cursor)
+    if ctx.principal_type == "agent":
+        # Only log an agent listing other keys in the tenant - a human
+        # Owner checking their own Registry page isn't a "which key did
+        # what" event worth an audit row, but an agent enumerating its
+        # siblings is exactly the kind of read this log exists for.
+        await repo.write_audit_log({
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "actor": ctx.principal_id,
+            "action": "atom.read",
+            "resource": "atoms",
+            "decision": "PERMITTED",
+        })
     return {"items": items, "next_cursor": next_cursor}
 
 class AtomTransitionSchema(BaseModel):
