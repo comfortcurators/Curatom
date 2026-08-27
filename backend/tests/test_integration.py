@@ -404,3 +404,67 @@ def test_tasks_get_returns_501():
         )
     assert response.status_code == 501
     assert response.json()["detail"]["code"] == "not_implemented"
+
+
+# ---------------------------------------------------------------------------
+# Auditor and Technical Reviewer had a deny-only rule for their restriction
+# (rules 3/4 in policy_engine.py) but no matching baseline ALLOW for the
+# lane itself, so both roles were locked out of everything - including the
+# read/audit actions their role exists for. Found live via the Policy
+# Simulator: Auditor denied on its own audit.read; Technical Reviewer
+# denied on memory.read.
+# ---------------------------------------------------------------------------
+
+def test_auditor_can_read_audit_log():
+    token = _owner_token()
+    with _no_stored_policies():
+        response = client.post(
+            "/policies/simulate",
+            json={"principal": "Auditor", "action": "audit.read", "resource": "audit/x"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert response.json()["allowed"] is True
+
+
+def test_auditor_can_read_directory():
+    token = _owner_token()
+    with _no_stored_policies():
+        response = client.post(
+            "/policies/simulate",
+            json={"principal": "Auditor", "action": "directory.read", "resource": "directory/x"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert response.json()["allowed"] is True
+
+
+def test_auditor_still_cannot_write_memory():
+    token = _owner_token()
+    with _no_stored_policies():
+        response = client.post(
+            "/policies/simulate",
+            json={"principal": "Auditor", "action": "memory.write", "resource": "memories/x"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert response.json()["allowed"] is False
+
+
+def test_technical_reviewer_can_read_memory():
+    token = _owner_token()
+    with _no_stored_policies():
+        response = client.post(
+            "/policies/simulate",
+            json={"principal": "Technical Reviewer", "action": "memory.read", "resource": "memories/x"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert response.json()["allowed"] is True
+
+
+def test_technical_reviewer_still_cannot_write():
+    token = _owner_token()
+    with _no_stored_policies():
+        response = client.post(
+            "/policies/simulate",
+            json={"principal": "Technical Reviewer", "action": "atom.create", "resource": "atoms/x"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert response.json()["allowed"] is False

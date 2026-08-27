@@ -98,6 +98,29 @@ class PolicyEngine:
                     "reason": f"Standard operational clearance for {ctx.role}."
                 }
 
+        # Rules 3 and 4 above only ever DENY a Technical Reviewer or Auditor
+        # outside their lane - neither role had a matching baseline ALLOW
+        # for the lane itself, so both were locked out of everything,
+        # including the read/audit actions their whole role exists for.
+        # Found live via the Policy Simulator: Auditor denied on its own
+        # audit.read and directory.read; Technical Reviewer denied on
+        # memory.read. Mirrors rule 3's own read-shaped carve-out.
+        if ctx.role == "Technical Reviewer" and (action.endswith(".read") or action == "recall.execute"):
+            return {
+                "allowed": True,
+                "deciding_policy_id": "pol_baseline_technical_reviewer",
+                "deciding_rule_name": "Technical Reviewer Read Clearance",
+                "reason": "Technical Reviewer role cleared for read-only operations.",
+            }
+
+        if ctx.role == "Auditor" and (action.startswith("audit.") or action == "directory.read"):
+            return {
+                "allowed": True,
+                "deciding_policy_id": "pol_baseline_auditor",
+                "deciding_rule_name": "Auditor Compliance Clearance",
+                "reason": "Auditor role cleared for audit and directory inspections.",
+            }
+
         if ctx.principal_type == "agent" and action in ["recall.execute", "atom.read"]:
             return {
                 "allowed": True,
