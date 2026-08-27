@@ -1186,6 +1186,72 @@ async def set_business_context(
     return {"onboarded": True, "context": saved}
 
 
+# --- Decision Log ---
+# A claim-backed choice, recorded when it's made, and the real outcome tied
+# back to it later - so the next similar choice weighs this company's own
+# track record against a vendor's claim, not the claim alone. See
+# repository.py's create_decision docstring-equivalent comment for the
+# concrete example this exists for.
+class DecisionCreateSchema(BaseModel):
+    claim: str
+    decision: str
+    reasoning: Optional[str] = None
+
+
+class DecisionOutcomeSchema(BaseModel):
+    outcome_summary: str
+    outcome_result: str
+
+
+@app.post("/decisions")
+async def create_decision(
+    payload: DecisionCreateSchema,
+    ctx: AuthContext = Depends(authorize("decision.write")),
+):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    decision = await repo.create_decision(payload.claim, payload.decision, payload.reasoning, ctx.principal_id)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "decision.create",
+        "resource": f"decisions/{decision['id']}",
+        "decision": "PERMITTED",
+    })
+    return decision
+
+
+@app.get("/decisions")
+async def list_decisions(
+    cursor: Optional[str] = None,
+    limit: int = 50,
+    ctx: AuthContext = Depends(authorize("decision.read")),
+):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    items, next_cursor = await repo.list_decisions(limit=limit, cursor_id=cursor)
+    return {"items": items, "next_cursor": next_cursor}
+
+
+@app.put("/decisions/{decision_id}/outcome")
+async def record_decision_outcome(
+    decision_id: str,
+    payload: DecisionOutcomeSchema,
+    ctx: AuthContext = Depends(authorize("decision.write")),
+):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    try:
+        updated = await repo.record_decision_outcome(decision_id, payload.outcome_summary, payload.outcome_result)
+    except ValueError as exc:
+        raise HTTPException(404, detail=str(exc)) from exc
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "decision.outcome_recorded",
+        "resource": f"decisions/{decision_id}",
+        "details": {"outcome_result": payload.outcome_result},
+    })
+    return updated
+
+
 # Serve the built frontend (frontend/dist, copied into the image by the
 # Dockerfile) from the same Cloud Run service as the API, so no separate
 # hosting product or deploy path is needed. Registered last so every API

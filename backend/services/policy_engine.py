@@ -90,7 +90,7 @@ class PolicyEngine:
             }
             
         if ctx.role in ["Tech Lead", "Software Designer"]:
-            if action in ["atom.read", "atom.create", "atom.transition", "key.rotate", "memory.read", "memory.write", "recall.execute", "policy.read", "policy.simulate", "fleet.read", "directory.read", "directory.ingest"]:
+            if action in ["atom.read", "atom.create", "atom.transition", "key.rotate", "memory.read", "memory.write", "recall.execute", "policy.read", "policy.simulate", "fleet.read", "directory.read", "directory.ingest", "decision.read", "decision.write"]:
                 return {
                     "allowed": True,
                     "deciding_policy_id": f"pol_baseline_{ctx.role.lower().replace(' ', '_')}",
@@ -112,6 +112,14 @@ class PolicyEngine:
                 "deciding_policy_id": "pol_baseline_context_read",
                 "deciding_rule_name": "Business Context Readable By Any Authenticated Principal",
                 "reason": "Any authenticated human or agent principal may read the tenant's business context - it exists specifically so an LLM or agent can ground itself in it before acting.",
+            }
+
+        if action == "decision.read":
+            return {
+                "allowed": True,
+                "deciding_policy_id": "pol_baseline_decision_read",
+                "deciding_rule_name": "Decision Log Readable By Any Authenticated Principal",
+                "reason": "Any authenticated human or agent principal may read the tenant's decision log - a future decision should be able to weigh this company's own track record against a vendor's claim.",
             }
 
         # Default is Deny

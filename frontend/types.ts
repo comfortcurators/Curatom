@@ -235,6 +235,20 @@ export interface TeamUser {
   created_at: string;
 }
 
+export interface Decision {
+  id: string;
+  claim: string;
+  decision: string;
+  reasoning: string | null;
+  recorded_by: string;
+  recorded_at: string;
+  outcome_summary: string | null;
+  outcome_result: string | null;
+  outcome_recorded_at: string | null;
+  org_id: string;
+  tenant_id: string;
+}
+
 export interface BusinessContext {
   business_name: string;
   what_you_do: string;

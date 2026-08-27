@@ -4,6 +4,7 @@ import {
   AtomProfile,
   AuditLogEntry,
   BusinessContext,
+  Decision,
   TeamUser,
   DirectoryEntry,
   DirectoryStatus,
@@ -227,6 +228,28 @@ class ApiClient {
   deactivateUser(username: string) {
     return this.request<{ status: string; username: string }>(`/users/${encodeURIComponent(username)}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Decision Log — a claim-backed choice, and the real outcome tied back to it.
+  createDecision(data: { claim: string; decision: string; reasoning?: string }) {
+    return this.request<Decision>('/decisions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  listDecisions(cursor?: string, limit: number = 50) {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    params.set('limit', limit.toString());
+    return this.request<PaginatedResponse<Decision>>(`/decisions?${params.toString()}`);
+  }
+
+  recordDecisionOutcome(decisionId: string, data: { outcome_summary: string; outcome_result: string }) {
+    return this.request<Decision>(`/decisions/${encodeURIComponent(decisionId)}/outcome`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 

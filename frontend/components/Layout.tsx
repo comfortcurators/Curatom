@@ -21,6 +21,7 @@ import {
   Wrench,
   Clock,
   Users,
+  ScrollText,
 } from 'lucide-react';
 import { Role } from '../types';
 import { APP_NAME, APP_VERSION, COMPANY_NAME, DEFAULT_TENANT_ID } from '../constants';
@@ -51,6 +52,7 @@ const TECHNICAL_NAV = [
   { path: '/memory', icon: Database, label: 'Memory Bank' },
   { path: '/directory', icon: BookOpen, label: 'Model Directory' },
   { path: '/feed', icon: Activity, label: 'Audit & Telemetry' },
+  { path: '/decisions', icon: ScrollText, label: 'Decision Log' },
   { path: '/playground', icon: TerminalSquare, label: 'Proving Ground' },
   { path: '/task-worker-status', icon: Clock, label: 'Task Worker Status' },
 ];

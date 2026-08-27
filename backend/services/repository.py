@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from typing import Optional, List, Dict, Any, Tuple
 from google.cloud import firestore
 from google.cloud.firestore_v1.vector import Vector
@@ -243,6 +244,70 @@ class TenantScopedRepository:
     async def list_policies(self) -> List[Dict[str, Any]]:
         docs = await self.db.collection("policies").where("org_id", "==", self.org_id).where("tenant_id", "==", self.tenant_id).get()
         return [d.to_dict() for d in docs]
+
+    # --- Decision Log ---
+    # A claim-backed choice, recorded at the time it's made, and the real
+    # outcome tied back to it later - so the next similar choice has this
+    # company's own track record to weigh against whatever a vendor or
+    # model claims about itself. Concrete example this exists for: a model
+    # claims it does 20 minutes of work for the cost of 2 minutes of a
+    # cheaper one; the company acts on that; 40 days later it turns out the
+    # choice caused a regression. Without this log, that never gets
+    # remembered - the same claim gets trusted again next time.
+    async def create_decision(self, claim: str, decision: str, reasoning: Optional[str], recorded_by: str) -> Dict[str, Any]:
+        decision_id = f"dec_{uuid.uuid4().hex}"
+        data = {
+            "id": decision_id,
+            "claim": claim,
+            "decision": decision,
+            "reasoning": reasoning,
+            "recorded_by": recorded_by,
+            "recorded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "outcome_summary": None,
+            "outcome_result": None,
+            "outcome_recorded_at": None,
+            "org_id": self.org_id,
+            "tenant_id": self.tenant_id,
+        }
+        await self.db.collection("decisions").document(decision_id).set(data)
+        return data
+
+    async def get_decision(self, decision_id: str) -> Optional[Dict[str, Any]]:
+        doc = await self.db.collection("decisions").document(decision_id).get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict()
+        if data.get("org_id") != self.org_id or data.get("tenant_id") != self.tenant_id:
+            return None
+        return data
+
+    async def record_decision_outcome(self, decision_id: str, outcome_summary: str, outcome_result: str) -> Dict[str, Any]:
+        existing = await self.get_decision(decision_id)
+        if not existing:
+            raise ValueError("Decision not found in active tenant scope")
+        updates = {
+            "outcome_summary": outcome_summary,
+            "outcome_result": outcome_result,
+            "outcome_recorded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        await self.db.collection("decisions").document(decision_id).update(updates)
+        return {**existing, **updates}
+
+    async def list_decisions(self, limit: int = 50, cursor_id: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        query = self.db.collection("decisions")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .order_by("recorded_at", direction=firestore.Query.DESCENDING)
+
+        if cursor_id:
+            cursor_doc = await self.db.collection("decisions").document(cursor_id).get()
+            if cursor_doc.exists:
+                query = query.start_after(cursor_doc)
+
+        docs = await query.limit(limit + 1).get()
+        items = [d.to_dict() for d in docs[:limit]]
+        next_cursor = docs[limit].id if len(docs) > limit else None
+        return items, next_cursor
 
     # --- Business Context ---
     # The canonical, human-provided answer to "what is this business and what
