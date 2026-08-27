@@ -1634,6 +1634,65 @@ async def record_decision_outcome(
     return updated
 
 
+# --- Sketchbooks ---
+# Every principal - human or agent - gets its own notebook it can write to
+# freely, no approval gate: isolation from every other owner's sketchbook
+# is the safety boundary, not a gate on the write itself. Every stroke is
+# audited the same as everything else. The Owner sees every sketchbook in
+# the tenant (documentation, not restriction, is the whole point); one
+# agent never sees another's content, only that something changed and when.
+class SketchbookEntrySchema(BaseModel):
+    topic: str
+    content: str
+
+@app.post("/sketchbook")
+async def write_sketchbook(payload: SketchbookEntrySchema, ctx: AuthContext = Depends(authorize("sketchbook.write"))):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    entry = await repo.create_sketchbook_entry(ctx.principal_id, {"topic": payload.topic, "content": payload.content})
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "sketchbook.write",
+        "resource": f"sketchbook/{ctx.principal_id}/{entry['id']}",
+        "details": {"topic": payload.topic},
+    })
+    return entry
+
+@app.get("/sketchbook")
+async def read_own_sketchbook(ctx: AuthContext = Depends(authorize("sketchbook.read"))):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    items = await repo.list_own_sketchbook(ctx.principal_id)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "sketchbook.read",
+        "resource": f"sketchbook/{ctx.principal_id}",
+        "decision": "PERMITTED",
+    })
+    return {"items": items}
+
+@app.get("/sketchbook/all")
+async def read_all_sketchbooks(ctx: AuthContext = Depends(authorize("sketchbook.read"))):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can read every sketchbook in the tenant")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    items = await repo.list_all_sketchbooks()
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "sketchbook.read_all",
+        "resource": "sketchbook/all",
+        "decision": "PERMITTED",
+    })
+    return {"items": items}
+
+@app.get("/sketchbook/feed")
+async def sketchbook_activity_feed(ctx: AuthContext = Depends(authorize("sketchbook.read"))):
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    items = await repo.list_sketchbook_activity()
+    return {"items": items}
+
+
 # --- Approval Queue (approval-gated agent keys) ---
 # A key registered with requires_approval=true never writes directly - each
 # attempted write above was captured as a pending_approvals row instead of

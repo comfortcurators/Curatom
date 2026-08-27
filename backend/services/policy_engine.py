@@ -135,6 +135,14 @@ class PolicyEngine:
                 "reason": "Any authenticated human or agent principal may read the tenant's decision log - a future decision should be able to weigh this company's own track record against a vendor's claim.",
             }
 
+        if action in ["sketchbook.write", "sketchbook.read"]:
+            return {
+                "allowed": True,
+                "deciding_policy_id": "pol_baseline_sketchbook",
+                "deciding_rule_name": "Every Principal Owns Its Own Sketchbook",
+                "reason": "Any authenticated human or agent principal may write and read its own sketchbook unconditionally - isolation from every other owner's sketchbook is the safety boundary here, not an approval gate.",
+            }
+
         # Default is Deny
         return {
             "allowed": False,

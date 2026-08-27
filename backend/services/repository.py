@@ -464,6 +464,59 @@ class TenantScopedRepository:
     async def vector_search_memories(self, query_embedding: List[float], limit: int = 20) -> List[Dict[str, Any]]:
         return await self.vector_search_memories_scoped(query_embedding, limit)
 
+    # --- Sketchbooks ---
+    # Every principal - human or agent - gets its own isolated notebook it
+    # can write to unconditionally, no approval gate, because the isolation
+    # itself is the safety boundary: one owner's sketchbook is invisible to
+    # every other owner except the tenant's Owner, who sees all of them
+    # (documentation, not restriction, is the point). Cross-owner awareness
+    # is metadata-only, via the activity feed below - never the content.
+    async def create_sketchbook_entry(self, owner_id: str, entry: Dict[str, Any]) -> Dict[str, Any]:
+        entry_id = f"sketch_{uuid.uuid4().hex}"
+        data = {
+            **entry,
+            "id": entry_id,
+            "owner_id": owner_id,
+            "org_id": self.org_id,
+            "tenant_id": self.tenant_id,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        await self.db.collection("sketchbooks").document(entry_id).set(data)
+        return data
+
+    async def list_own_sketchbook(self, owner_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        docs = await self.db.collection("sketchbooks")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .where("owner_id", "==", owner_id)\
+            .order_by("created_at", direction=firestore.Query.DESCENDING)\
+            .limit(limit)\
+            .get()
+        return [d.to_dict() for d in docs]
+
+    async def list_all_sketchbooks(self, limit: int = 100) -> List[Dict[str, Any]]:
+        docs = await self.db.collection("sketchbooks")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .order_by("created_at", direction=firestore.Query.DESCENDING)\
+            .limit(limit)\
+            .get()
+        return [d.to_dict() for d in docs]
+
+    async def list_sketchbook_activity(self, limit: int = 50) -> List[Dict[str, Any]]:
+        # Metadata only - who wrote, when, to which topic - never the
+        # content, so this is safe for any principal to see about any owner.
+        docs = await self.db.collection("sketchbooks")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .order_by("created_at", direction=firestore.Query.DESCENDING)\
+            .limit(limit)\
+            .get()
+        return [
+            {"owner_id": d.to_dict().get("owner_id"), "topic": d.to_dict().get("topic"), "created_at": d.to_dict().get("created_at")}
+            for d in docs
+        ]
+
     async def delete_subject_cascade(self, subject_id: str) -> Dict[str, Any]:
         memories_docs = await self.db.collection("memories")\
             .where("org_id", "==", self.org_id)\
