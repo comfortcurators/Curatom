@@ -256,6 +256,61 @@ async def redeem_recovery_code(username: str, code: str, new_password: str) -> D
     }
 
 
+# --- Email verification ---
+# A 6-digit code, hashed the same way a password is, single-use, expiring.
+# The plaintext is never stored - only sent (via mail_service) and hashed.
+EMAIL_VERIFICATION_TTL_MINUTES = 30
+
+
+def generate_verification_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+async def issue_email_verification_code(username: str) -> str:
+    db = get_db()
+    doc_ref = db.collection("users").document(username)
+    doc = await doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(404, detail="User not found")
+    code = generate_verification_code()
+    code_hash = bcrypt.hashpw(code.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    await doc_ref.update({
+        "email_verification_code_hash": code_hash,
+        "email_verification_sent_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "email_verified": False,
+    })
+    return code
+
+
+async def verify_email_code(username: str, code: str) -> bool:
+    db = get_db()
+    doc_ref = db.collection("users").document(username)
+    doc = await doc_ref.get()
+    if not doc.exists:
+        return False
+    user = doc.to_dict()
+    stored_hash = user.get("email_verification_code_hash")
+    sent_at = user.get("email_verification_sent_at")
+    if not stored_hash or not sent_at:
+        return False
+    try:
+        sent = datetime.datetime.fromisoformat(sent_at)
+        if sent.tzinfo is None:
+            sent = sent.replace(tzinfo=datetime.timezone.utc)
+    except (ValueError, TypeError):
+        return False
+    if datetime.datetime.now(datetime.timezone.utc) - sent > datetime.timedelta(minutes=EMAIL_VERIFICATION_TTL_MINUTES):
+        return False
+    if not bcrypt.checkpw(code.encode("utf-8"), stored_hash.encode("utf-8")):
+        return False
+    await doc_ref.update({
+        "email_verified": True,
+        "email_verification_code_hash": None,
+        "email_verification_sent_at": None,
+    })
+    return True
+
+
 async def resolve_auth(
     authorization: Optional[str] = Header(None),
     x_atom_key: Optional[str] = Header(None),

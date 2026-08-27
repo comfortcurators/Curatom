@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     JWT_SECRET: str = os.getenv("JWT_SECRET", "")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
     ENTERPRISE_NAME: str = os.getenv("ENTERPRISE_NAME", "Comfort Curators Fleet")
+    # ZeptoMail (Zoho) - optional. Unset means email verification is not
+    # sent; registration still succeeds, but the account stays unverified
+    # and the frontend is told so honestly rather than claiming an email
+    # went out when nothing was configured to send one.
+    ZEPTOMAIL_TOKEN: str = os.getenv("ZEPTOMAIL_TOKEN", "")
+    ZEPTOMAIL_FROM_ADDRESS: str = os.getenv("ZEPTOMAIL_FROM_ADDRESS", "noreply@comfortcurators.io")
+    ZEPTOMAIL_FROM_NAME: str = os.getenv("ZEPTOMAIL_FROM_NAME", "Curatom Enterprise")
 
     INGESTION_PAGES_LIMIT: int = 5
     GEMINI_CONCURRENCY_LIMIT: int = 10

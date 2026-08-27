@@ -272,7 +272,12 @@ export const Team: React.FC = () => {
               .map((u) => (
                 <div key={u.username} className="flex items-center justify-between p-14">
                   <div>
-                    <div className="text-13 text-ink-primary font-medium">{u.display_name}</div>
+                    <div className="text-13 text-ink-primary font-medium flex items-center gap-6">
+                      {u.display_name}
+                      {u.email_verified === false && (
+                        <span className="text-10 font-mono text-accent bg-accent/10 px-6 py-1 rounded uppercase">Email unverified</span>
+                      )}
+                    </div>
                     <div className="text-11 text-ink-secondary font-mono">
                       {u.username} · {ROLE_DISPLAY_NAMES[u.role] || u.role}
                     </div>

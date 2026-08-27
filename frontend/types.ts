@@ -234,6 +234,7 @@ export interface TeamUser {
   tenant_id: string;
   is_active: boolean;
   created_at: string;
+  email_verified?: boolean;
 }
 
 export interface PendingApproval {

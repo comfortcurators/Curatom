@@ -26,6 +26,7 @@ from main import app  # noqa: E402
 # is the one route that must run before any principal exists.
 ALLOWED_UNGATED_PATHS = {
     "/healthz", "/readyz", "/auth/login", "/auth/register", "/auth/recover",
+    "/auth/verify-email", "/auth/resend-verification",
     # Deliberately public agent-discovery surface: a cold agent must be
     # able to reach these with zero prior credential. None of them read
     # or write tenant-scoped data - registration (which does) still

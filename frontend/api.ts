@@ -69,7 +69,10 @@ class ApiClient {
   }
 
   register(payload: { username: string; founder_name: string; business_name: string; email: string; phone?: string; password: string }) {
-    return this.request<{ session_token: string; role: string; tenant_id: string; org_id: string; principal_id: string }>(
+    return this.request<{
+      session_token: string; role: string; tenant_id: string; org_id: string; principal_id: string;
+      email_verified: boolean; verification_email_sent: boolean;
+    }>(
       '/auth/register',
       {
         method: 'POST',
@@ -90,6 +93,20 @@ class ApiClient {
         body: JSON.stringify(payload)
       }
     );
+  }
+
+  verifyEmail(username: string, code: string) {
+    return this.request<{ status: string; email_verified: boolean }>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ username, code })
+    });
+  }
+
+  resendVerification(username: string, email: string) {
+    return this.request<{ status: string; verification_email_sent?: boolean }>('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ username, email })
+    });
   }
 
   // Autonomous Taskmaster

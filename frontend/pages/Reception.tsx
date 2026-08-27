@@ -7,7 +7,7 @@ import { api } from '../api';
 
 export const Reception: React.FC = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'select' | 'human' | 'agent' | 'register' | 'recover'>('select');
+  const [mode, setMode] = useState<'select' | 'human' | 'agent' | 'register' | 'recover' | 'verify-email'>('select');
 
   // Human Auth State
   const [username, setUsername] = useState('');
@@ -25,6 +25,13 @@ export const Reception: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+
+  // Email verification (post-registration)
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verificationEmailSent, setVerificationEmailSent] = useState(true);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   // Recovery State (backup code -> new password)
   const [recUsername, setRecUsername] = useState('');
@@ -77,11 +84,37 @@ export const Reception: React.FC = () => {
       localStorage.setItem('curatom_tenant_id', res.tenant_id);
       localStorage.setItem('curatom_principal_id', res.principal_id);
       localStorage.removeItem('curatom_atom_key');
-      navigate('/');
+      setVerificationEmailSent(res.verification_email_sent);
+      setMode('verify-email');
     } catch (err: any) {
       setRegError(err.message || 'Registration failed');
     } finally {
       setRegLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifyLoading(true);
+    setVerifyError(null);
+    try {
+      await api.verifyEmail(regUsername, verifyCode);
+      navigate('/');
+    } catch (err: any) {
+      setVerifyError(err.message || 'Verification failed');
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendMessage(null);
+    try {
+      const res = await api.resendVerification(regUsername, regEmail);
+      setVerificationEmailSent(!!res.verification_email_sent);
+      setResendMessage(res.verification_email_sent ? 'A new code is on its way.' : 'Could not send an email right now — email delivery is not configured in this deployment.');
+    } catch (err: any) {
+      setResendMessage(err.message || 'Could not resend the code.');
     }
   };
 
@@ -417,6 +450,69 @@ export const Reception: React.FC = () => {
             <p className="text-11 text-ink-secondary font-mono text-center pt-8">
               You become the Owner of a new, fully isolated tenant. No data is shared with any other business on Curatom.
             </p>
+          </form>
+        )}
+
+        {mode === 'verify-email' && (
+          <form onSubmit={handleVerifyEmail} className="space-y-16">
+            <h2 className="text-15 font-medium text-ink-primary font-display flex items-center gap-6">
+              <Lock size={14} className="text-accent" /> Verify Your Email
+            </h2>
+
+            {verificationEmailSent ? (
+              <p className="text-13 text-ink-secondary font-prose leading-relaxed">
+                We sent a 6-digit code to <span className="text-ink-primary">{regEmail}</span>. Enter it below — it expires in 30 minutes.
+              </p>
+            ) : (
+              <div className="p-10 bg-accent/10 border border-accent/30 rounded text-12 text-accent font-mono">
+                Couldn't send a verification email — email delivery isn't configured in this deployment. Your account still works; you can verify later.
+              </div>
+            )}
+
+            {verifyError && (
+              <div className="p-10 bg-accent/10 border border-accent/30 rounded text-12 text-accent font-mono">
+                {verifyError}
+              </div>
+            )}
+
+            {resendMessage && (
+              <div className="p-10 bg-surface-200 border border-surface-400 rounded text-12 text-ink-secondary font-mono">
+                {resendMessage}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-11 font-mono text-ink-secondary mb-6">6-Digit Code</label>
+              <input
+                type="text"
+                value={verifyCode}
+                onChange={e => setVerifyCode(e.target.value)}
+                className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary font-mono outline-none focus:border-accent tracking-widest text-center"
+                placeholder="000000"
+                maxLength={6}
+                required
+              />
+            </div>
+
+            <div className="pt-8">
+              <button
+                type="submit"
+                disabled={verifyLoading}
+                className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-accent hover:bg-accent/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
+              >
+                {verifyLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                Verify
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between pt-4">
+              <button type="button" onClick={handleResendVerification} className="text-12 text-ink-secondary hover:text-accent underline">
+                Resend code
+              </button>
+              <button type="button" onClick={() => navigate('/')} className="text-12 text-ink-secondary hover:text-ink-primary underline">
+                Skip for now
+              </button>
+            </div>
           </form>
         )}
 

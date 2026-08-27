@@ -28,7 +28,10 @@ from core.security import (
     VALID_ROLES,
     issue_recovery_code,
     redeem_recovery_code,
+    issue_email_verification_code,
+    verify_email_code,
 )
+from services.mail_service import send_verification_email
 from core.rate_limiter import rate_limiter
 from services.repository import TenantScopedRepository, GlobalRepository
 from services.policy_engine import PolicyEngine, authorize
@@ -429,6 +432,12 @@ async def register(payload: RegisterRequest, request: Request):
         "details": {"business_name": payload.business_name},
     })
 
+    # Best-effort: registration succeeds regardless of whether the email
+    # actually sends, but the response says plainly which happened rather
+    # than implying a verification email always goes out.
+    verification_code = await issue_email_verification_code(payload.username)
+    email_sent = await send_verification_email(payload.email, payload.founder_name, verification_code)
+
     token = create_session_token(
         principal_id=user["username"],
         role="Owner",
@@ -441,7 +450,50 @@ async def register(payload: RegisterRequest, request: Request):
         "role": "Owner",
         "org_id": org_id,
         "tenant_id": tenant_id,
+        "email_verified": False,
+        "verification_email_sent": email_sent,
     }
+
+# --- Email verification ---
+class VerifyEmailRequest(BaseModel):
+    username: str
+    code: str
+
+@app.post("/auth/verify-email")
+async def verify_email(payload: VerifyEmailRequest, request: Request):
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded_for.split(",", 1)[0].strip()
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+    await rate_limiter.check_rate_limit("auth", f"ip:{client_ip}", max_rpm=5)
+
+    ok = await verify_email_code(payload.username, payload.code)
+    if not ok:
+        raise HTTPException(400, detail={"code": "invalid_or_expired_code", "message": "That code is wrong or has expired. Request a new one."})
+    return {"status": "verified", "email_verified": True}
+
+
+class ResendVerificationRequest(BaseModel):
+    username: str
+    email: str
+
+@app.post("/auth/resend-verification")
+async def resend_verification(payload: ResendVerificationRequest, request: Request):
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded_for.split(",", 1)[0].strip()
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+    await rate_limiter.check_rate_limit("auth", f"ip:{client_ip}", max_rpm=5)
+
+    try:
+        code = await issue_email_verification_code(payload.username)
+    except HTTPException:
+        # Same response whether the username exists or not - do not let this
+        # endpoint be used to enumerate accounts.
+        return {"status": "sent_if_account_exists"}
+    email_sent = await send_verification_email(payload.email, payload.username, code)
+    return {"status": "sent_if_account_exists", "verification_email_sent": email_sent}
+
 
 # --- Backup code (self-service account recovery) ---
 # Shown once, exactly like a password. Curatom's own advice is to write it
