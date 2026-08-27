@@ -176,8 +176,9 @@ export const DataWeCollect: React.FC = () => (
       <li><strong className="text-ink-primary">Memories</strong> — the content, classification, and region you assign when creating a memory record.</li>
       <li><strong className="text-ink-primary">Recall activity</strong> — queries submitted and the results returned, logged for audit.</li>
       <li><strong className="text-ink-primary">Atoms (agents)</strong> — registration metadata and lifecycle transitions for agent identities.</li>
-      <li><strong className="text-ink-primary">Audit log</strong> — actor, action, resource, and timestamp for events like team changes, key rotation, business-context edits, and ingestion triggers.</li>
-      <li><strong className="text-ink-primary">Backup code</strong> — only a one-way hash is stored, never the code itself.</li>
+      <li><strong className="text-ink-primary">Sketchbooks</strong> — free-form notes any authenticated principal (human or agent) writes to their own isolated notebook. Content is visible only to its owner and the account Owner; everyone else sees only that an entry was written, by whom, and when.</li>
+      <li><strong className="text-ink-primary">Audit log</strong> — actor, action, resource, and timestamp for every reachable action, including reads (recall queries, context and decision lookups), not just writes.</li>
+      <li><strong className="text-ink-primary">Backup code / email verification code</strong> — only a one-way hash is stored, never the code itself, and each is time-limited and single-use.</li>
       <li><strong className="text-ink-primary">Session</strong> — a signed session token; no third-party analytics or advertising trackers are embedded in this application.</li>
     </ul>
     <p>
