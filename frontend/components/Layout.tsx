@@ -272,7 +272,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         <div className="flex-1 overflow-y-auto p-16 md:p-24">
-          <div className="max-w-6xl mx-auto h-full">{children}</div>
+          <div className="max-w-6xl mx-auto min-h-full">{children}</div>
 
           {/* Compliance footer — full legal entity name, on every page. */}
           <footer className="max-w-6xl mx-auto mt-48 pt-24 border-t border-surface-300">
