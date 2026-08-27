@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, Copy, Check, FileInput } from 'lucide-react';
 import { api } from '../api';
 import { BusinessContext } from '../types';
 
@@ -60,6 +60,104 @@ const QUESTIONS: Question[] = [
     required: false,
   },
   {
+    key: 'brands',
+    label: 'What brands do you operate under? (optional)',
+    placeholder: 'e.g. One parent brand, or several — list them.',
+    required: false,
+  },
+  {
+    key: 'domains',
+    label: 'What domains/websites are yours? (optional)',
+    placeholder: 'e.g. example.com, example.io',
+    required: false,
+  },
+  {
+    key: 'founders',
+    label: 'Who founded this business? (optional)',
+    placeholder: 'Name(s), and role if it matters.',
+    required: false,
+  },
+  {
+    key: 'no_of_employees',
+    label: 'How many people work here? (optional)',
+    placeholder: 'e.g. ~50, or a rough range.',
+    required: false,
+  },
+  {
+    key: 'countries_covered',
+    label: 'What countries or regions do you operate in? (optional)',
+    placeholder: 'List as many as apply.',
+    required: false,
+  },
+  {
+    key: 'key_associations',
+    label: 'Any key associations, partnerships, or affiliations worth knowing? (optional)',
+    placeholder: 'e.g. Industry bodies, major partners, certifications.',
+    required: false,
+    multiline: true,
+  },
+  {
+    key: 'spine_of_business',
+    label: 'What is the actual spine of this business — the one thing everything else depends on? (optional)',
+    placeholder: 'What would break the whole business if it stopped working.',
+    required: false,
+    multiline: true,
+  },
+  {
+    key: 'business_model_evolution',
+    label: 'How has your business model changed since incorporation? (optional)',
+    placeholder: "What you started as vs. what you are now, if it's changed.",
+    required: false,
+    multiline: true,
+  },
+  {
+    key: 'key_events_and_principles',
+    label: 'Any key events or founding principles an AI should know about? (optional)',
+    placeholder: 'A turning point, an incident, a principle you never compromise on.',
+    required: false,
+    multiline: true,
+  },
+  {
+    key: 'user_base',
+    label: 'Describe your actual user base, if different from "customers" above. (optional)',
+    placeholder: 'e.g. Registered users vs. paying customers, if that distinction matters here.',
+    required: false,
+    multiline: true,
+  },
+  {
+    key: 'softwares_involved',
+    label: 'What software is directly or indirectly involved in running this business? (optional)',
+    placeholder: 'Beyond the stack above — vendor tools, internal systems, anything integrated.',
+    required: false,
+    multiline: true,
+  },
+  {
+    key: 'hardwares_firmware',
+    label: 'Any hardware or firmware involved? (optional)',
+    placeholder: 'e.g. IoT devices, POS terminals, embedded firmware — leave blank if none.',
+    required: false,
+  },
+  {
+    key: 'future_goals_or_deadlines',
+    label: 'Any future goals or deadlines an AI should be aware of? (optional)',
+    placeholder: 'A launch date, a target, a deadline that matters.',
+    required: false,
+    multiline: true,
+  },
+  {
+    key: 'things_missing_to_ask',
+    label: "What haven't we asked that we should have? (optional)",
+    placeholder: 'Anything this form missed about your business.',
+    required: false,
+    multiline: true,
+  },
+  {
+    key: 'who_is_writing_and_reliability',
+    label: 'Who is answering these questions, and how reliable is what they know? (optional)',
+    placeholder: 'e.g. Founder, first-hand and current — or an assistant working from old notes.',
+    required: false,
+  },
+  {
     key: 'anything_else',
     label: 'Anything else worth knowing? (optional)',
     placeholder: 'Whatever comes to mind.',
@@ -67,6 +165,44 @@ const QUESTIONS: Question[] = [
     multiline: true,
   },
 ];
+
+// The premade prompt a founder can hand to their own AI or developer instead
+// of typing every field by hand. Deliberately factual-only - the same
+// discipline the rest of this app applies to itself (see main.py's business
+// context comment: "No synthetic or pre-filled data").
+const buildPremadePrompt = (): string => {
+  const lines = QUESTIONS.map((q) => `${q.key}: ""  # ${q.label.replace(/\s*\(optional\)$/, '')}`);
+  return [
+    '# Curatom business context — fill in what you can verify, leave the rest blank.',
+    '# Kindly provide factual data you can verify; else leave blank.',
+    '# Fields like countries_covered or key_associations can list more than one value',
+    '# in the same string — as many times, locations, and at whatever scale applies.',
+    '# Reply in this same YAML shape so it can be pasted straight back into Curatom.',
+    '',
+    ...lines,
+  ].join('\n');
+};
+
+// Minimal parser for the flat "key: value" shape above - no nesting, no
+// lists, because that's the only shape this form's prompt ever produces or
+// expects back. Strips a trailing "# comment", surrounding quotes, and
+// ignores blank/comment-only lines.
+const parsePastedYaml = (text: string): Partial<BusinessContext> => {
+  const result: Record<string, string> = {};
+  const validKeys = new Set(QUESTIONS.map((q) => q.key as string));
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const match = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)$/);
+    if (!match) continue;
+    const [, key, rest] = match;
+    if (!validKeys.has(key)) continue;
+    const withoutComment = rest.replace(/\s+#.*$/, '').trim();
+    const unquoted = withoutComment.replace(/^["']|["']$/g, '');
+    if (unquoted) result[key] = unquoted;
+  }
+  return result as Partial<BusinessContext>;
+};
 
 interface Props {
   initial?: BusinessContext | null;
@@ -77,9 +213,34 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
   const [values, setValues] = useState<Partial<BusinessContext>>(initial || {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [pasteMessage, setPasteMessage] = useState<string | null>(null);
 
   const update = (key: keyof BusinessContext, value: string) => {
     setValues((v) => ({ ...v, [key]: value }));
+  };
+
+  const handleCopyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(buildPremadePrompt());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert('Clipboard access was denied. Copy the text manually from a secure browser context.');
+    }
+  };
+
+  const handleApplyPaste = () => {
+    const parsed = parsePastedYaml(pasteText);
+    if (Object.keys(parsed).length === 0) {
+      setPasteMessage('Nothing recognizable in that text — check it matches the field: value shape.');
+      return;
+    }
+    setValues((v) => ({ ...v, ...parsed }));
+    setPasteMessage(`Filled in ${Object.keys(parsed).length} field(s) below — review before saving.`);
+    setPasteText('');
   };
 
   const missingRequired = QUESTIONS.filter((q) => q.required && !values[q.key]?.toString().trim());
@@ -111,6 +272,52 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
           this is what every AI agent connected to Curatom checks before it acts on your behalf, so you only have
           to explain your business once instead of re-explaining it to every LLM you talk to.
         </p>
+      </div>
+
+      <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20 space-y-12">
+        <p className="text-13 text-ink-primary font-medium">Write your heart out below, or hand this off instead</p>
+        <p className="text-12 text-ink-secondary font-prose leading-relaxed">
+          Both options are always available. Copy a starter prompt for your own AI or developer to fill in — factual,
+          verifiable answers only, blank where they don't know — then paste what comes back here and it fills the
+          form below for you to review before saving.
+        </p>
+        <div className="flex flex-wrap gap-8">
+          <button
+            type="button"
+            onClick={handleCopyPrompt}
+            className="flex items-center gap-6 px-12 py-7 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded text-12 font-mono transition-colors"
+          >
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            {copied ? 'Copied' : 'Copy prompt for your AI/developer'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPasteOpen((v) => !v)}
+            className="flex items-center gap-6 px-12 py-7 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded text-12 font-mono transition-colors"
+          >
+            <FileInput size={13} /> {pasteOpen ? 'Hide paste-back box' : 'Paste their answer back in'}
+          </button>
+        </div>
+        {pasteOpen && (
+          <div className="space-y-8 pt-4">
+            <textarea
+              className="w-full bg-surface-200 border border-surface-400 rounded p-10 text-12 text-ink-primary focus:border-accent outline-none font-mono"
+              style={{ minHeight: '6rem' }}
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder="Paste the filled-in YAML here..."
+            />
+            <button
+              type="button"
+              onClick={handleApplyPaste}
+              disabled={!pasteText.trim()}
+              className="px-12 py-6 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded text-12 font-medium disabled:opacity-50"
+            >
+              Fill the form below from this
+            </button>
+            {pasteMessage && <p className="text-11 text-ink-secondary font-prose">{pasteMessage}</p>}
+          </div>
+        )}
       </div>
 
       <div className="space-y-20">

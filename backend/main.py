@@ -1329,6 +1329,27 @@ async def list_memories(
     ]
     return {"items": filtered, "next_cursor": next_cursor}
 
+@app.delete("/memories/{memory_id}")
+async def delete_memory(memory_id: str, ctx: AuthContext = Depends(authorize("memory.delete"))):
+    # Deletes one stray/wrong record directly - a bad manual entry, a
+    # leftover test fixture - vs. the subject-erasure cascade below, which
+    # is a DSR tool keyed by a data subject, not a memory id, and doesn't
+    # help when the record has no subject_ids at all.
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can delete a memory record directly")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    deleted = await repo.delete_memory(memory_id)
+    if not deleted:
+        raise HTTPException(404, detail=f"Memory '{memory_id}' not found")
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "memory.delete",
+        "resource": f"memories/{memory_id}",
+        "details": {},
+    })
+    return {"status": "deleted", "memory_id": memory_id}
+
 @app.delete("/subjects/{subject_id}")
 async def erase_subject(
     subject_id: str, 
@@ -1492,6 +1513,25 @@ class BusinessContextPayload(BaseModel):
     constraints: Optional[str] = None
     voice_and_tone: Optional[str] = None
     anything_else: Optional[str] = None
+    # Added in addition to the fields above, all optional so nobody who has
+    # already onboarded is forced to re-answer anything. Each can list more
+    # than one value in free text (e.g. "12 countries: IN, SG, US...") -
+    # there's no separate repeatable-field mechanism, this is one string box.
+    brands: Optional[str] = None
+    domains: Optional[str] = None
+    founders: Optional[str] = None
+    no_of_employees: Optional[str] = None
+    countries_covered: Optional[str] = None
+    key_associations: Optional[str] = None
+    spine_of_business: Optional[str] = None
+    business_model_evolution: Optional[str] = None
+    key_events_and_principles: Optional[str] = None
+    user_base: Optional[str] = None
+    softwares_involved: Optional[str] = None
+    hardwares_firmware: Optional[str] = None
+    things_missing_to_ask: Optional[str] = None
+    future_goals_or_deadlines: Optional[str] = None
+    who_is_writing_and_reliability: Optional[str] = None
 
 
 @app.get("/context")

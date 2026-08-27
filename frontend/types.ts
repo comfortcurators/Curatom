@@ -286,6 +286,21 @@ export interface BusinessContext {
   constraints?: string;
   voice_and_tone?: string;
   anything_else?: string;
+  brands?: string;
+  domains?: string;
+  founders?: string;
+  no_of_employees?: string;
+  countries_covered?: string;
+  key_associations?: string;
+  spine_of_business?: string;
+  business_model_evolution?: string;
+  key_events_and_principles?: string;
+  user_base?: string;
+  softwares_involved?: string;
+  hardwares_firmware?: string;
+  things_missing_to_ask?: string;
+  future_goals_or_deadlines?: string;
+  who_is_writing_and_reliability?: string;
   created_at?: string;
   updated_at?: string;
 }

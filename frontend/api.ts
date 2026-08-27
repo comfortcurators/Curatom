@@ -230,6 +230,7 @@ class ApiClient {
   }
 
   invalidateMemory(id: string) { return this.request<{status: string}>(`/memories/${id}/invalidate`, { method: 'POST' }); }
+  deleteMemory(id: string) { return this.request<{ status: string; memory_id: string }>(`/memories/${id}`, { method: 'DELETE' }); }
   deleteSubject(subjectId: string) {
     return this.request<{
       status: string;

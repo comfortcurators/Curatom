@@ -8,6 +8,7 @@ export const Memory: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [erasing, setErasing] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMemories = async () => {
@@ -65,6 +66,20 @@ export const Memory: React.FC = () => {
       alert(`Erasure refused: ${e.message}`);
     } finally {
       setErasing(null);
+    }
+  };
+
+  const handleDeleteMemory = async (memoryId: string, topic: string) => {
+    if (!confirm(`Delete "${topic}" outright? This removes the record and its cache entries, but nothing else linked to a data subject — use Erase Subject for that.`)) return;
+    setDeleting(memoryId);
+    try {
+      await api.deleteMemory(memoryId);
+      const data = await api.getMemories(search);
+      setMemories(data.items);
+    } catch (e: any) {
+      alert(`Delete refused: ${e.message}`);
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -129,6 +144,14 @@ export const Memory: React.FC = () => {
                   <span className="px-8 py-3 bg-surface-200 text-ink-secondary text-10 rounded font-mono border border-surface-300">
                     {memory.id}
                   </span>
+                  <button
+                    onClick={() => handleDeleteMemory(memory.id, memory.topic)}
+                    disabled={deleting === memory.id}
+                    className="flex items-center gap-4 px-8 py-4 bg-surface-200 hover:bg-accent/20 text-ink-secondary hover:text-accent rounded text-10 font-mono transition-colors"
+                    title="Delete this memory record outright"
+                  >
+                    <Trash2 size={12} /> Delete
+                  </button>
                 </div>
               </div>
               

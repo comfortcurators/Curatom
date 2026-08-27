@@ -469,6 +469,30 @@ class TenantScopedRepository:
     async def vector_search_memories(self, query_embedding: List[float], limit: int = 20) -> List[Dict[str, Any]]:
         return await self.vector_search_memories_scoped(query_embedding, limit)
 
+    async def delete_memory(self, memory_id: str) -> bool:
+        # For a single wrong/stray record (a bad manual entry, leftover test
+        # fixture) - not the subject-erasure cascade above, which is a DSR
+        # tool keyed by a data subject, not a memory id. Purges its cache
+        # entries too, same as delete_subject_cascade, so a stale cached
+        # reshape can't outlive the memory it was built from.
+        # Not get_memory(): that validates classification/region and raises
+        # on a corrupt record, which would make a bad fixture undeletable.
+        doc = await self.db.collection("memories").document(memory_id).get()
+        if not doc.exists:
+            return False
+        data = doc.to_dict()
+        if data.get("org_id") != self.org_id or data.get("tenant_id") != self.tenant_id:
+            return False
+        cache_docs = await self.db.collection("cache")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .where("memory_id", "==", memory_id)\
+            .get()
+        for c_doc in cache_docs:
+            await c_doc.reference.delete()
+        await self.db.collection("memories").document(memory_id).delete()
+        return True
+
     # --- Sketchbooks ---
     # Every principal - human or agent - gets its own isolated notebook it
     # can write to unconditionally, no approval gate, because the isolation
