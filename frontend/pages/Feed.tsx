@@ -128,104 +128,112 @@ export const Feed: React.FC = () => {
 
       {tab === 'recall' ? (
         <div className="flex-1 bg-surface-100 border border-surface-300 rounded-lg overflow-hidden flex flex-col">
-          <div className="grid grid-cols-12 gap-12 p-14 border-b border-surface-300 bg-surface-200 text-11 font-mono text-ink-secondary uppercase tracking-wider shrink-0">
-            <div className="col-span-2">Timestamp</div>
-            <div className="col-span-3">Requester Atom</div>
-            <div className="col-span-3">Topic</div>
-            <div className="col-span-2">Residency & Status</div>
-            <div className="col-span-2 text-right">Latency</div>
-          </div>
+          <div className="flex-1 overflow-auto">
+            <div className="min-w-[720px]">
+              <div className="grid grid-cols-12 gap-12 p-14 border-b border-surface-300 bg-surface-200 text-11 font-mono text-ink-secondary uppercase tracking-wider sticky top-0">
+                <div className="col-span-2 truncate">Timestamp</div>
+                <div className="col-span-3 truncate">Requester Atom</div>
+                <div className="col-span-3 truncate">Topic</div>
+                <div className="col-span-2 truncate">Residency & Status</div>
+                <div className="col-span-2 text-right truncate">Latency</div>
+              </div>
 
-          <div className="flex-1 overflow-y-auto p-8 space-y-4">
-            {logsLoading && logs.length === 0 ? (
-              <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
-            ) : logs.length === 0 ? (
-              <div className="text-center py-48 text-ink-secondary text-13 font-prose">No recall events recorded yet.</div>
-            ) : (
-              logs.map(log => (
-                <div key={log.recall_id} className="grid grid-cols-12 gap-12 p-10 rounded hover:bg-surface-200 transition-colors items-center text-12 border border-transparent hover:border-surface-300">
-                  <div className="col-span-2 text-ink-secondary font-mono text-11">
-                    {formatTime(log.timestamp)}
-                  </div>
-                  <div className="col-span-3 text-ink-primary font-mono truncate" title={log.atom_id}>
-                    {log.atom_id}
-                  </div>
-                  <div className="col-span-3 text-ink-primary font-mono truncate" title={log.topic}>
-                    {log.topic}
-                  </div>
-                  <div className="col-span-2 flex items-center gap-6">
-                    {log.was_cached ? (
-                      <span className="flex items-center gap-3 text-ink-primary text-10 font-mono bg-surface-400 px-6 py-1 rounded">
-                        <Zap size={10} className="text-accent" /> Cached
-                      </span>
-                    ) : log.is_stale ? (
-                      <span className="flex items-center gap-3 text-accent text-10 font-mono bg-accent/10 px-6 py-1 rounded">
-                        <AlertTriangle size={10} /> Stale (+{log.staleness_overage_hours}h)
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-3 text-ink-secondary text-10 font-mono">
-                        <CheckCircle2 size={10} /> Fresh
-                      </span>
-                    )}
-                  </div>
-                  <div className="col-span-2 text-right font-mono text-11 text-ink-secondary flex justify-end items-center gap-4">
-                    <Clock size={11} />
-                    {log.latency_ms}ms
-                  </div>
-                </div>
-              ))
-            )}
+              <div className="p-8 space-y-4">
+                {logsLoading && logs.length === 0 ? (
+                  <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
+                ) : logs.length === 0 ? (
+                  <div className="text-center py-48 text-ink-secondary text-13 font-prose">No recall events recorded yet.</div>
+                ) : (
+                  logs.map(log => (
+                    <div key={log.recall_id} className="grid grid-cols-12 gap-12 p-10 rounded hover:bg-surface-200 transition-colors items-center text-12 border border-transparent hover:border-surface-300">
+                      <div className="col-span-2 text-ink-secondary font-mono text-11 truncate">
+                        {formatTime(log.timestamp)}
+                      </div>
+                      <div className="col-span-3 text-ink-primary font-mono truncate" title={log.atom_id}>
+                        {log.atom_id}
+                      </div>
+                      <div className="col-span-3 text-ink-primary font-mono truncate" title={log.topic}>
+                        {log.topic}
+                      </div>
+                      <div className="col-span-2 flex items-center gap-6 overflow-hidden">
+                        {log.was_cached ? (
+                          <span className="flex items-center gap-3 text-ink-primary text-10 font-mono bg-surface-400 px-6 py-1 rounded shrink-0">
+                            <Zap size={10} className="text-accent" /> Cached
+                          </span>
+                        ) : log.is_stale ? (
+                          <span className="flex items-center gap-3 text-accent text-10 font-mono bg-accent/10 px-6 py-1 rounded shrink-0">
+                            <AlertTriangle size={10} /> Stale (+{log.staleness_overage_hours}h)
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-3 text-ink-secondary text-10 font-mono shrink-0">
+                            <CheckCircle2 size={10} /> Fresh
+                          </span>
+                        )}
+                      </div>
+                      <div className="col-span-2 text-right font-mono text-11 text-ink-secondary flex justify-end items-center gap-4">
+                        <Clock size={11} className="shrink-0" />
+                        <span className="truncate">{log.latency_ms}ms</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
       ) : (
         <div className="flex-1 bg-surface-100 border border-surface-300 rounded-lg overflow-hidden flex flex-col">
-          <div className="grid grid-cols-12 gap-12 p-14 border-b border-surface-300 bg-surface-200 text-11 font-mono text-ink-secondary uppercase tracking-wider shrink-0">
-            <div className="col-span-2">Timestamp</div>
-            <div className="col-span-2">Actor</div>
-            <div className="col-span-3">Action</div>
-            <div className="col-span-2">Resource</div>
-            <div className="col-span-3">Detail</div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-8 space-y-4">
-            {auditLoading && auditItems.length === 0 ? (
-              <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
-            ) : auditError ? (
-              <div className="text-center py-48 text-accent text-13 font-prose flex flex-col items-center gap-8">
-                <ShieldAlert size={20} />
-                {auditError}
+          <div className="flex-1 overflow-auto">
+            <div className="min-w-[720px]">
+              <div className="grid grid-cols-12 gap-12 p-14 border-b border-surface-300 bg-surface-200 text-11 font-mono text-ink-secondary uppercase tracking-wider sticky top-0">
+                <div className="col-span-2 truncate">Timestamp</div>
+                <div className="col-span-2 truncate">Actor</div>
+                <div className="col-span-3 truncate">Action</div>
+                <div className="col-span-2 truncate">Resource</div>
+                <div className="col-span-3 truncate">Detail</div>
               </div>
-            ) : auditItems.length === 0 ? (
-              <div className="text-center py-48 text-ink-secondary text-13 font-prose">No audited actions recorded yet.</div>
-            ) : (
-              auditItems.map((entry, idx) => {
-                const meta = actionMeta(entry.action);
-                const Icon = meta.icon;
-                return (
-                  <div
-                    key={`${entry.timestamp}_${idx}`}
-                    className="grid grid-cols-12 gap-12 p-10 rounded hover:bg-surface-200 transition-colors items-center text-12 border border-transparent hover:border-surface-300"
-                  >
-                    <div className="col-span-2 text-ink-secondary font-mono text-11">
-                      {formatTime(entry.timestamp)}
-                    </div>
-                    <div className="col-span-2 text-ink-primary font-mono truncate" title={entry.actor}>
-                      {entry.actor || '—'}
-                    </div>
-                    <div className={`col-span-3 flex items-center gap-6 font-mono truncate ${toneClasses[meta.tone]}`} title={entry.action}>
-                      <Icon size={12} className="shrink-0" />
-                      <span className="truncate">{entry.action}</span>
-                    </div>
-                    <div className="col-span-2 text-ink-secondary font-mono truncate" title={entry.resource}>
-                      {entry.resource}
-                    </div>
-                    <div className="col-span-3 text-ink-secondary font-prose truncate" title={auditDetail(entry)}>
-                      {auditDetail(entry)}
-                    </div>
+
+              <div className="p-8 space-y-4">
+                {auditLoading && auditItems.length === 0 ? (
+                  <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
+                ) : auditError ? (
+                  <div className="text-center py-48 text-accent text-13 font-prose flex flex-col items-center gap-8">
+                    <ShieldAlert size={20} />
+                    {auditError}
                   </div>
-                );
-              })
-            )}
+                ) : auditItems.length === 0 ? (
+                  <div className="text-center py-48 text-ink-secondary text-13 font-prose">No audited actions recorded yet.</div>
+                ) : (
+                  auditItems.map((entry, idx) => {
+                    const meta = actionMeta(entry.action);
+                    const Icon = meta.icon;
+                    return (
+                      <div
+                        key={`${entry.timestamp}_${idx}`}
+                        className="grid grid-cols-12 gap-12 p-10 rounded hover:bg-surface-200 transition-colors items-center text-12 border border-transparent hover:border-surface-300"
+                      >
+                        <div className="col-span-2 text-ink-secondary font-mono text-11 truncate">
+                          {formatTime(entry.timestamp)}
+                        </div>
+                        <div className="col-span-2 text-ink-primary font-mono truncate" title={entry.actor}>
+                          {entry.actor || '—'}
+                        </div>
+                        <div className={`col-span-3 flex items-center gap-6 font-mono truncate ${toneClasses[meta.tone]}`} title={entry.action}>
+                          <Icon size={12} className="shrink-0" />
+                          <span className="truncate">{entry.action}</span>
+                        </div>
+                        <div className="col-span-2 text-ink-secondary font-mono truncate" title={entry.resource}>
+                          {entry.resource}
+                        </div>
+                        <div className="col-span-3 text-ink-secondary font-prose truncate" title={auditDetail(entry)}>
+                          {auditDetail(entry)}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
