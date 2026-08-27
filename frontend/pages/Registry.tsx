@@ -3,6 +3,25 @@ import { Check, Copy, Cpu, Key, Loader2, RefreshCw, X } from 'lucide-react';
 import { api } from '../api';
 import { Atom } from '../types';
 
+// Mirrors the backend's real state machine (main.py's transition_atom
+// `legal` map). Only 'active' <-> 'quarantined' had buttons before - an
+// atom transitioned to 'draining' or 'suspended' had no button anywhere
+// to move it again, even though the backend fully supports recovering
+// from both. Label is what the button does, not the state it leads to.
+const LEGAL_TRANSITIONS: Record<string, { transition: string; label: string }[]> = {
+  provisioning: [{ transition: 'activate', label: 'Activate' }, { transition: 'retire', label: 'Retire' }],
+  active: [
+    { transition: 'suspend', label: 'Suspend' },
+    { transition: 'quarantine', label: 'Quarantine' },
+    { transition: 'drain', label: 'Drain' },
+    { transition: 'retire', label: 'Retire' },
+  ],
+  suspended: [{ transition: 'activate', label: 'Reactivate' }, { transition: 'quarantine', label: 'Quarantine' }, { transition: 'retire', label: 'Retire' }],
+  quarantined: [{ transition: 'activate', label: 'Unquarantine' }, { transition: 'retire', label: 'Retire' }],
+  draining: [{ transition: 'activate', label: 'Reactivate' }, { transition: 'retire', label: 'Retire' }],
+  retired: [],
+};
+
 export const Registry: React.FC = () => {
   const [atoms, setAtoms] = useState<Atom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,22 +169,16 @@ export const Registry: React.FC = () => {
                   <RefreshCw size={12} /> Rotate Key
                 </button>
                 <div className="flex gap-6">
-                  {atom.status === 'active' && (
+                  {(LEGAL_TRANSITIONS[atom.status] || []).map(({ transition, label }) => (
                     <button
-                      onClick={() => handleTransition(atom.id, 'quarantine')}
-                      className="px-8 py-4 bg-surface-300 hover:bg-accent/20 text-ink-secondary hover:text-accent rounded text-10 font-mono transition-colors"
+                      key={transition}
+                      onClick={() => handleTransition(atom.id, transition)}
+                      disabled={actionLoading === atom.id}
+                      className="px-8 py-4 bg-surface-300 hover:bg-accent/20 text-ink-secondary hover:text-accent rounded text-10 font-mono transition-colors disabled:opacity-40"
                     >
-                      Quarantine
+                      {label}
                     </button>
-                  )}
-                  {atom.status === 'quarantined' && (
-                    <button
-                      onClick={() => handleTransition(atom.id, 'activate')}
-                      className="px-8 py-4 bg-accent text-canvas rounded text-10 font-mono transition-colors"
-                    >
-                      Unquarantine
-                    </button>
-                  )}
+                  ))}
                 </div>
               </div>
             </div>
