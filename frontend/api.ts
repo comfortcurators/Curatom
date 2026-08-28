@@ -289,6 +289,31 @@ class ApiClient {
     });
   }
 
+  async extractContextFromImage(file: File) {
+    // Not this.request(): that always forces Content-Type: application/json,
+    // which would strip the multipart boundary the browser sets for
+    // FormData and break the upload.
+    const headers: HeadersInit = {};
+    const token = localStorage.getItem('curatom_session_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const atomKey = localStorage.getItem('curatom_atom_key');
+    if (atomKey) headers['X-Atom-Key'] = atomKey;
+
+    const form = new FormData();
+    form.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/context/from-image`, {
+      method: 'POST',
+      headers,
+      body: form,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(error.detail?.message || error.detail || `HTTP ${response.status}: Request failed`);
+    }
+    return response.json() as Promise<{ extracted: Partial<BusinessContext> }>;
+  }
+
   // Team — real per-teammate accounts, Owner-managed.
   listUsers() {
     return this.request<TeamUser[]>('/users');

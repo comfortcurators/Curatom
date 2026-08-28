@@ -10,7 +10,7 @@ import uuid
 
 import bcrypt
 import yaml
-from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from fastapi import FastAPI, HTTPException, Depends, Request, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -38,6 +38,7 @@ from services.policy_engine import PolicyEngine, authorize
 from services.directory_fetcher import run_ingestion, embed_text, is_ingestion_stale
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
 from services.chat_handler import handle_chat
+from services.vision_context import extract_business_context_from_image
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from models.schemas import ChatRequest, IdentifyRequest, MemoryCreate
@@ -1549,6 +1550,38 @@ async def get_business_context(ctx: AuthContext = Depends(authorize("context.rea
         "decision": "PERMITTED",
     })
     return render_for_principal(payload, ctx)
+
+
+_ALLOWED_CONTEXT_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+_MAX_CONTEXT_IMAGE_BYTES = 8 * 1024 * 1024
+
+@app.post("/context/from-image")
+async def extract_context_from_image(
+    file: UploadFile = File(...),
+    ctx: AuthContext = Depends(authorize("context.write")),
+):
+    # A third path alongside typing the form and pasting back a filled-in
+    # YAML prompt: a founder who'd rather grab paper and a pen photographs
+    # the result instead of typing it up. Extraction only - this never
+    # saves anything itself, same as the paste-back path, so the founder
+    # always reviews before PUT /context actually persists it.
+    if file.content_type not in _ALLOWED_CONTEXT_IMAGE_TYPES:
+        raise HTTPException(400, detail=f"Unsupported image type '{file.content_type}'")
+    contents = await file.read()
+    if len(contents) > _MAX_CONTEXT_IMAGE_BYTES:
+        raise HTTPException(413, detail="Image too large (max 8MB)")
+
+    extracted = await extract_business_context_from_image(contents, file.content_type)
+
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "context.extract_from_image",
+        "resource": f"tenant/{ctx.tenant_id}/business_context",
+        "details": {"fields_extracted": list(extracted.keys())},
+    })
+    return {"extracted": extracted}
 
 
 @app.put("/context")

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Loader2, ArrowRight, Copy, Check, FileInput } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Loader2, ArrowRight, Copy, Check, FileInput, Camera } from 'lucide-react';
 import { api } from '../api';
 import { BusinessContext } from '../types';
 
@@ -217,6 +217,9 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteMessage, setPasteMessage] = useState<string | null>(null);
+  const [imageExtracting, setImageExtracting] = useState(false);
+  const [imageMessage, setImageMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const update = (key: keyof BusinessContext, value: string) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -241,6 +244,28 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
     setValues((v) => ({ ...v, ...parsed }));
     setPasteMessage(`Filled in ${Object.keys(parsed).length} field(s) below — review before saving.`);
     setPasteText('');
+  };
+
+  const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImageExtracting(true);
+    setImageMessage(null);
+    try {
+      const res = await api.extractContextFromImage(file);
+      const count = Object.keys(res.extracted).length;
+      if (count === 0) {
+        setImageMessage("Couldn't make out anything usable in that photo — try a clearer shot, or type it in below.");
+        return;
+      }
+      setValues((v) => ({ ...v, ...res.extracted }));
+      setImageMessage(`Filled in ${count} field(s) below from the photo — review before saving.`);
+    } catch (e: any) {
+      setImageMessage(`Could not read that photo: ${e.message}`);
+    } finally {
+      setImageExtracting(false);
+    }
   };
 
   const missingRequired = QUESTIONS.filter((q) => q.required && !values[q.key]?.toString().trim());
@@ -277,9 +302,9 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
       <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20 space-y-12">
         <p className="text-13 text-ink-primary font-medium">Write your heart out below, or hand this off instead</p>
         <p className="text-12 text-ink-secondary font-prose leading-relaxed">
-          Both options are always available. Copy a starter prompt for your own AI or developer to fill in — factual,
-          verifiable answers only, blank where they don't know — then paste what comes back here and it fills the
-          form below for you to review before saving.
+          All options are always available. Copy a starter prompt for your own AI or developer to fill in — factual,
+          verifiable answers only, blank where they don't know — then paste what comes back here. Or if it's easier
+          to grab paper and a pen, photograph what you wrote and it'll read it straight into the form below.
         </p>
         <div className="flex flex-wrap gap-8">
           <button
@@ -297,7 +322,24 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
           >
             <FileInput size={13} /> {pasteOpen ? 'Hide paste-back box' : 'Paste their answer back in'}
           </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={imageExtracting}
+            className="flex items-center gap-6 px-12 py-7 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded text-12 font-mono transition-colors disabled:opacity-50"
+          >
+            {imageExtracting ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+            {imageExtracting ? 'Reading photo...' : 'Photograph handwritten notes'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            className="hidden"
+            onChange={handleImageSelected}
+          />
         </div>
+        {imageMessage && <p className="text-11 text-ink-secondary font-prose">{imageMessage}</p>}
         {pasteOpen && (
           <div className="space-y-8 pt-4">
             <textarea
