@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { WovenLocusField } from './components/WovenLocusField';
 import { Reception } from './pages/Reception';
 import { Overview } from './pages/Overview';
 import { Team } from './pages/Team';
@@ -27,6 +28,7 @@ import {
 const App: React.FC = () => {
   return (
     <HashRouter>
+      <WovenLocusField />
       <Layout>
         <Routes>
           <Route path="/reception" element={<Reception />} />
