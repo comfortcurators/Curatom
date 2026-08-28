@@ -222,6 +222,20 @@ def generate_recovery_code() -> str:
 
 
 async def issue_recovery_code(username: str) -> str:
+    # The built-in demo account has no Firestore "users" doc at all - its
+    # password is the DEMO_PASSWORD secret, checked directly in
+    # verify_human_login, never read from a stored hash. A backup code here
+    # would be issued and stored, but redeem_recovery_code has nothing to
+    # write a new password into that login would ever consult - so it would
+    # look like it worked and silently do nothing. Say that plainly instead
+    # of the confusing generic 404 this used to fall through to (a real
+    # account has a "users" doc and a demo login never does, so the two
+    # cases must not share one error).
+    if username == DEMO_USERNAME:
+        raise HTTPException(400, detail={
+            "code": "demo_account_not_recoverable",
+            "message": "The demo account's password is fixed and isn't reset by a backup code. Create your own account to use this feature.",
+        })
     db = get_db()
     doc_ref = db.collection("users").document(username)
     doc = await doc_ref.get()
