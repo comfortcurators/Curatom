@@ -664,7 +664,12 @@ async def list_tenants(ctx: AuthContext = Depends(authorize("tenant.read"))):
     tenant = await repo.get_tenant()
     if not tenant:
         return []
-    return [{"tenant_id": tenant["tenant_id"], "name": tenant.get("name", ""), "org_id": tenant["org_id"]}]
+    return [{
+        "tenant_id": tenant["tenant_id"],
+        "name": tenant.get("name", ""),
+        "org_id": tenant["org_id"],
+        "training_data_opt_in": tenant.get("training_data_opt_in", False),
+    }]
 
 class TenantRenamePayload(BaseModel):
     name: str
@@ -689,7 +694,37 @@ async def rename_tenant(payload: TenantRenamePayload, ctx: AuthContext = Depends
         "resource": f"tenants/{ctx.tenant_id}",
         "details": {"name": name},
     })
-    return {"tenant_id": tenant["tenant_id"], "name": tenant.get("name", ""), "org_id": tenant["org_id"]}
+    return {
+        "tenant_id": tenant["tenant_id"],
+        "name": tenant.get("name", ""),
+        "org_id": tenant["org_id"],
+        "training_data_opt_in": tenant.get("training_data_opt_in", False),
+    }
+
+class TrainingConsentPayload(BaseModel):
+    opt_in: bool
+
+@app.patch("/tenants/training-consent")
+async def set_training_consent(payload: TrainingConsentPayload, ctx: AuthContext = Depends(authorize("tenant.write"))):
+    # Stores a consent flag only. Nothing today reads this to anonymize or
+    # train on anything - there is no such pipeline built. This is the
+    # honest version of the feature: record the decision for real, don't
+    # claim a mechanism that doesn't exist yet.
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can change this")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    tenant = await repo.update_training_consent(payload.opt_in, decided_by=ctx.principal_id)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "tenant.training_consent",
+        "resource": f"tenants/{ctx.tenant_id}",
+        "details": {"opt_in": payload.opt_in},
+    })
+    return {
+        "tenant_id": tenant["tenant_id"],
+        "training_data_opt_in": tenant.get("training_data_opt_in", False),
+    }
 
 @app.get("/fleets")
 async def list_fleets(

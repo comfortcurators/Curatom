@@ -88,6 +88,7 @@ export interface Tenant {
   quotas: TenantQuotas;
   costs: TenantCostTracking;
   halted: boolean;
+  training_data_opt_in?: boolean;
 }
 
 export interface Fleet {

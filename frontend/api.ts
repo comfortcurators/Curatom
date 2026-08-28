@@ -141,9 +141,15 @@ class ApiClient {
   getFleetHealth(fleetId: string) { return this.request<any>(`/fleets/${fleetId}/health`); }
   getTenants() { return this.request<Tenant[]>('/tenants'); }
   renameTenant(name: string) {
-    return this.request<{ tenant_id: string; name: string; org_id: string }>('/tenants', {
+    return this.request<{ tenant_id: string; name: string; org_id: string; training_data_opt_in: boolean }>('/tenants', {
       method: 'PATCH',
       body: JSON.stringify({ name })
+    });
+  }
+  setTrainingConsent(optIn: boolean) {
+    return this.request<{ tenant_id: string; training_data_opt_in: boolean }>('/tenants/training-consent', {
+      method: 'PATCH',
+      body: JSON.stringify({ opt_in: optIn })
     });
   }
 

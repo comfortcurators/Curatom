@@ -88,6 +88,21 @@ class TenantScopedRepository:
         doc = await self.db.collection("tenants").document(self.tenant_id).get()
         return doc.to_dict()
 
+    async def update_training_consent(self, opt_in: bool, decided_by: str) -> Dict[str, Any]:
+        # A stored consent flag, nothing more. There is no training pipeline
+        # reading this yet - setting it moves no data anywhere and triggers
+        # no anonymization, because neither exists. It exists so the
+        # decision is recorded honestly for whenever (if ever) that work
+        # gets built, not so this endpoint can claim to already do it.
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        await self.db.collection("tenants").document(self.tenant_id).update({
+            "training_data_opt_in": opt_in,
+            "training_data_opt_in_decided_by": decided_by,
+            "training_data_opt_in_decided_at": now_iso,
+        })
+        doc = await self.db.collection("tenants").document(self.tenant_id).get()
+        return doc.to_dict()
+
     # --- Users (real accounts, one per human teammate) ---
     async def create_user(self, username: str, password_hash: str, role: str, display_name: str) -> Dict[str, Any]:
         existing = await self.db.collection("users").document(username).get()

@@ -41,6 +41,7 @@ export const Team: React.FC = () => {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [savingConsent, setSavingConsent] = useState(false);
 
   const loadTenant = useCallback(async () => {
     try {
@@ -73,6 +74,18 @@ export const Team: React.FC = () => {
       alert(`Could not rename the workspace: ${e.message}`);
     } finally {
       setSavingName(false);
+    }
+  };
+
+  const handleToggleConsent = async () => {
+    setSavingConsent(true);
+    try {
+      await api.setTrainingConsent(!tenant?.training_data_opt_in);
+      await loadTenant();
+    } catch (e: any) {
+      alert(`Could not save that: ${e.message}`);
+    } finally {
+      setSavingConsent(false);
     }
   };
 
@@ -226,6 +239,31 @@ export const Team: React.FC = () => {
             </button>
           </div>
         )}
+      </div>
+
+      <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20">
+        <label className="flex items-start gap-10 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!tenant?.training_data_opt_in}
+            onChange={handleToggleConsent}
+            disabled={savingConsent}
+            className="mt-2"
+          />
+          <span>
+            <span className="block text-13 text-ink-primary font-medium">
+              Let your data be used to improve Curatom
+              {savingConsent && <Loader2 size={12} className="inline animate-spin ml-6" />}
+            </span>
+            <span className="block text-12 text-ink-secondary font-prose mt-4 leading-relaxed">
+              Tick this only if you think your data would actually be useful for making Curatom better. Unchecked by
+              default, nothing changes unless you opt in. Being straight about what this does right now: it records
+              your decision — nothing today reads this flag to anonymize, extract, or train on anything, because no
+              such pipeline exists yet. This is the honest, plain version of that toggle rather than one that claims
+              a mechanism that isn't built.
+            </span>
+          </span>
+        </label>
       </div>
 
       {(approvalsLoading || approvals.length > 0) && (
