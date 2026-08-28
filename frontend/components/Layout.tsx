@@ -341,7 +341,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         })}
       </nav>
 
-      <div className="p-16 border-t border-surface-300 bg-surface-100">
+      <div className="p-16 border-t border-surface-300/60 bg-transparent">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8 truncate max-w-[170px]">
             {isAgent ? (
@@ -437,7 +437,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           );
         })}
       </nav>
-      <div className="p-12 border-t border-surface-300 bg-surface-100 flex justify-center">
+      <div className="p-12 border-t border-surface-300/60 bg-transparent flex justify-center">
         <button
           onClick={handleLogout}
           className="text-ink-secondary hover:text-ink-primary transition-colors p-6 rounded hover:bg-surface-300"
@@ -453,9 +453,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="flex h-screen w-full overflow-hidden font-ui text-ink-primary bg-canvas">
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex bg-surface-100 border-r border-surface-300 flex-col z-10 shrink-0 transition-all duration-150 ${
+        className={`glass-bar hidden md:flex flex-col z-10 shrink-0 transition-all duration-150 ${
           sidebarCollapsed ? 'w-56' : 'w-64'
         }`}
+        style={{ borderTop: 'none', borderLeft: 'none', borderBottom: 'none', borderRight: '1px solid var(--glass-border)' }}
       >
         {sidebarCollapsed ? collapsedRail : sidebarContent}
       </aside>
@@ -464,7 +465,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {mobileNavOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileNavOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-surface-100 border-r border-surface-300 flex flex-col shadow-2xl">
+          <aside
+            className="glass-bar absolute inset-y-0 left-0 w-72 max-w-[85vw] flex flex-col shadow-2xl"
+            style={{ borderTop: 'none', borderLeft: 'none', borderBottom: 'none', borderRight: '1px solid var(--glass-border)' }}
+          >
             {sidebarContent}
           </aside>
         </div>
@@ -472,7 +476,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative z-10 min-w-0">
-        <header className="h-56 border-b border-surface-300 bg-surface-100/60 backdrop-blur-md flex items-center justify-between px-16 md:px-24 shrink-0">
+        <header
+          className="glass-bar h-56 flex items-center justify-between px-16 md:px-24 shrink-0"
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid var(--glass-border)' }}
+        >
           <div className="flex items-center gap-12 min-w-0">
             <button
               onClick={() => setMobileNavOpen(true)}
@@ -498,7 +505,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <footer className="max-w-6xl mx-auto mt-48 pt-24 border-t border-surface-300">
             <div className="flex flex-col gap-16 md:flex-row md:items-center md:justify-between">
               <p className="text-11 text-ink-secondary">
-                © {new Date().getFullYear()} {LEGAL_NAME} · CIN {CIN}
+                © {new Date().getFullYear()} {LEGAL_NAME} · CIN {CIN} ·{' '}
+                <a
+                  href="https://comfortcurator.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-ink-primary transition-colors underline decoration-surface-400 underline-offset-2"
+                >
+                  comfortcurator.com
+                </a>
               </p>
               <nav className="flex flex-wrap gap-x-20 gap-y-8">
                 {COMPLIANCE_LINKS.map((link) => (

@@ -226,7 +226,7 @@ export const Registry: React.FC = () => {
           aria-modal="true"
           aria-labelledby="rotated-key-title"
         >
-          <div className="w-full max-w-lg rounded-lg border border-surface-300 bg-surface-100 p-24 shadow-2xl">
+          <div className="glass w-full max-w-lg rounded-lg p-24">
             <div className="flex items-start justify-between gap-16">
               <div className="flex items-center gap-10">
                 <div className="rounded bg-surface-300 p-8 text-accent">
