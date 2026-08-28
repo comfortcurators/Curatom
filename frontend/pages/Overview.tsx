@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, AlertTriangle, Bot, MessageCircleQuestion, Loader2, Pencil, Copy, Check, KeyRound, Camera } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle2, AlertTriangle, Bot, MessageCircleQuestion, Loader2, Pencil, Copy, Check, KeyRound, Camera, ChevronDown } from 'lucide-react';
 import { api } from '../api';
 import { BusinessContext } from '../types';
 import { BusinessContextForm } from '../components/BusinessContextForm';
 import { RegisterAtomForm } from '../components/RegisterAtomForm';
 
 const BackupCode: React.FC = () => {
+  // Used to render open, full-height, on every dashboard load - a
+  // permanent fixture demanding attention for something most founders
+  // set up once and never touch again. Collapsed by default now, same
+  // pattern as the White Paper section below.
+  const [open, setOpen] = useState(false);
   const [code, setCode] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -27,47 +33,60 @@ const BackupCode: React.FC = () => {
   };
 
   return (
-    <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24 space-y-14">
-      <div className="flex items-center gap-10">
-        <KeyRound size={20} className="text-accent" />
-        <h2 className="text-15 text-ink-primary font-medium">Your backup code</h2>
-      </div>
-      <p className="text-13 text-ink-secondary font-prose">
-        Lose your password and you lose access — unless you have this. Generate a code, then write it down or{' '}
-        <Camera size={12} className="inline -mt-2" /> photograph it and keep that somewhere safe, like you would a
-        physical key. Curatom never sees or stores that paper or photo — only the code itself, and only as a hash.
-      </p>
-
-      {code ? (
-        <div className="flex items-center gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
-          <code className="flex-1 text-14 font-mono text-ink-primary tracking-wider break-all">{code}</code>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(code);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 2000);
-            }}
-            className="text-ink-secondary hover:text-ink-primary transition-colors p-6 rounded hover:bg-surface-300 shrink-0"
-            title="Copy"
-          >
-            {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
-          </button>
-        </div>
-      ) : null}
-
-      {error && <div className="text-13 text-accent font-prose">~ {error} ~</div>}
-
+    <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24">
       <button
-        onClick={handleGenerate}
-        disabled={generating}
-        className="flex items-center gap-8 px-14 py-8 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded-md border border-surface-400 transition-colors text-13 font-medium disabled:opacity-50"
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-10"
       >
-        {generating ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
-        {code ? 'Generate a new code' : 'Generate a backup code'}
+        <span className="flex items-center gap-10">
+          <KeyRound size={18} className="text-accent" />
+          <span className="text-15 text-ink-primary font-medium">Your backup code</span>
+        </span>
+        <ChevronDown size={16} className={`text-ink-secondary transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      <p className="text-11 text-ink-secondary font-mono">
-        Shown once. Generating a new one replaces the old — only the latest code works.
-      </p>
+
+      {open && (
+        <div className="space-y-14 mt-16">
+          <p className="text-13 text-ink-secondary font-prose">
+            Lose your password and you lose access — unless you have this. Generate a code, then write it down or{' '}
+            <Camera size={12} className="inline -mt-2" /> photograph it and keep that somewhere safe, like you would
+            a physical key. Curatom never sees or stores that paper or photo — only the code itself, and only as a
+            hash.
+          </p>
+
+          {code ? (
+            <div className="flex items-center gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
+              <code className="flex-1 text-14 font-mono text-ink-primary tracking-wider break-all">{code}</code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(code);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="text-ink-secondary hover:text-ink-primary transition-colors p-6 rounded hover:bg-surface-300 shrink-0"
+                title="Copy"
+              >
+                {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
+              </button>
+            </div>
+          ) : null}
+
+          {error && <div className="text-13 text-accent font-prose">~ {error} ~</div>}
+
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="flex items-center gap-8 px-14 py-8 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded-md border border-surface-400 transition-colors text-13 font-medium disabled:opacity-50"
+          >
+            {generating ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
+            {code ? 'Generate a new code' : 'Generate a backup code'}
+          </button>
+          <p className="text-11 text-ink-secondary font-mono">
+            Shown once. Generating a new one replaces the old — only the latest code works.
+          </p>
+        </div>
+      )}
     </div>
   );
 };
@@ -201,16 +220,19 @@ export const Overview: React.FC = () => {
       {agentCount === 0 && <RegisterAtomForm title="Connect your first AI agent" onConnected={load} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-16">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20 flex flex-col gap-10">
-              <Icon size={18} className="text-accent" />
-              <div className="font-display text-24 text-ink-primary">{s.value}</div>
-              <div className="text-12 text-ink-secondary font-prose">{s.label}</div>
-            </div>
-          );
-        })}
+        <Link
+          to="/registry"
+          className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20 flex flex-col gap-10 hover:bg-surface-200 hover:border-accent/40 transition-colors"
+        >
+          <Bot size={18} className="text-accent" />
+          <div className="font-display text-24 text-ink-primary">{stats[0].value}</div>
+          <div className="text-12 text-ink-secondary font-prose">{stats[0].label}</div>
+        </Link>
+        <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20 flex flex-col gap-10">
+          <MessageCircleQuestion size={18} className="text-accent" />
+          <div className="font-display text-24 text-ink-primary">{stats[1].value}</div>
+          <div className="text-12 text-ink-secondary font-prose">{stats[1].label}</div>
+        </div>
       </div>
 
       <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24">

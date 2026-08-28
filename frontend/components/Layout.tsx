@@ -27,7 +27,7 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 import { Role } from '../types';
-import { APP_NAME, APP_VERSION, COMPANY_NAME, DEFAULT_TENANT_ID } from '../constants';
+import { APP_NAME, APP_VERSION, DEFAULT_TENANT_ID } from '../constants';
 import { api } from '../api';
 
 const LEGAL_NAME = 'Comfort Curators Private Limited';
@@ -221,7 +221,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="p-24 border-b border-surface-300 flex items-start justify-between">
         <div>
           <h1 className="font-display text-24 font-light tracking-tight text-ink-primary">{APP_NAME}</h1>
-          <p className="label-caps text-10 mt-4">{COMPANY_NAME}</p>
           <p className="mt-4 text-10 font-mono text-ink-secondary">{APP_VERSION}</p>
         </div>
         <div className="flex items-center gap-4 shrink-0">
@@ -248,9 +247,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Building2 size={12} /> Workspace
         </label>
         <div className="text-12 text-ink-primary truncate font-prose" title={tenantId}>
-          {tenantName || tenantId}
+          {tenantName || 'Workspace name not set'}
         </div>
-        {tenantName && <div className="text-10 font-mono text-ink-secondary truncate mt-1">{tenantId}</div>}
       </div>
 
       <nav className="flex-1 py-16 px-12 space-y-4 overflow-y-auto">
