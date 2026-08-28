@@ -23,6 +23,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [atomId, setAtomId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleConnect = async (e: React.FormEvent) => {
@@ -42,6 +43,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
         profile: { permitted_regions: regions },
       });
       setApiKey(res.api_key);
+      setAtomId(res.atom.id);
       onConnected?.();
     } catch (e: any) {
       setError(e.message || 'Could not connect that agent — try again.');
@@ -56,8 +58,28 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
     setRequiresApproval(false);
     setRegions(DEFAULT_REGIONS);
     setApiKey(null);
+    setAtomId(null);
     setError(null);
   };
+
+  // Credential-file shape, same idea as a GCP service-account JSON: every
+  // field an agent needs to actually call the endpoint, in one pasteable
+  // block, instead of a bare key an agent still had to know how to use.
+  const credentialJson = apiKey
+    ? JSON.stringify(
+        {
+          type: 'curatom_atom_key',
+          atom_id: atomId,
+          name,
+          endpoint: `${window.location.origin}/context`,
+          method: 'GET',
+          header: 'X-Atom-Key',
+          key: apiKey,
+        },
+        null,
+        2
+      )
+    : '';
 
   if (apiKey) {
     return (
@@ -73,17 +95,13 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
             <> Every write it attempts is queued, not executed — approve or deny each one from the Team page before it takes effect.</>
           )}
         </p>
-        <div className="flex items-center gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
-          {/* Was just the bare key string - an agent (or whoever's setting
-              one up) still had to know the endpoint and header name from
-              memory or docs elsewhere. This is copy-paste runnable as-is. */}
+        <div className="flex items-start gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
           <pre className="flex-1 text-12 font-mono text-ink-primary whitespace-pre-wrap break-all">
-{`GET ${window.location.origin}/context
-Header: X-Atom-Key: ${apiKey}`}
+            {credentialJson}
           </pre>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(`GET ${window.location.origin}/context\nHeader: X-Atom-Key: ${apiKey}`);
+              navigator.clipboard.writeText(credentialJson);
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
             }}

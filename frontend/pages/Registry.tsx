@@ -70,10 +70,24 @@ export const Registry: React.FC = () => {
 
   const handleCopyKey = async () => {
     if (!rotatedKey) return;
-    // Copy-paste runnable, not just the bare key - same as connect time.
-    const snippet = `GET ${window.location.origin}/context\nHeader: X-Atom-Key: ${rotatedKey.value}`;
+    // Same credential-file shape as connect time (RegisterAtomForm) - a
+    // JSON block with every field an agent needs, not just the bare key.
+    const atom = atoms.find((a) => a.id === rotatedKey.atomId);
+    const credentialJson = JSON.stringify(
+      {
+        type: 'curatom_atom_key',
+        atom_id: rotatedKey.atomId,
+        name: atom?.name,
+        endpoint: `${window.location.origin}/context`,
+        method: 'GET',
+        header: 'X-Atom-Key',
+        key: rotatedKey.value,
+      },
+      null,
+      2
+    );
     try {
-      await navigator.clipboard.writeText(snippet);
+      await navigator.clipboard.writeText(credentialJson);
       setCopied(true);
     } catch {
       alert('Clipboard access was denied. Copy the key from a secure browser context.');
