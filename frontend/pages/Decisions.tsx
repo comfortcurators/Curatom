@@ -136,7 +136,7 @@ export const Decisions: React.FC = () => {
           <Loader2 className="animate-spin" size={24} />
         </div>
       ) : error ? (
-        <div className="text-center py-48 text-accent text-13 font-prose">{error}</div>
+        <div className="text-center py-48 text-danger text-13 font-prose">{error}</div>
       ) : decisions.length === 0 ? (
         <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-32 text-center text-13 text-ink-secondary font-prose">
           No decisions recorded yet. Record one whenever a model or vendor's claim shapes a real choice — the value
