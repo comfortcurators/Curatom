@@ -27,6 +27,58 @@ const actionMeta = (action: string) => {
   return { icon: History, tone: 'neutral' as const };
 };
 
+// The raw action string (e.g. "training_corpus.export") is precise and
+// correct - the right thing for an engineer to see. It's also the only
+// thing this page showed, and Changes is one of the founder-facing
+// buckets, not Jargon. The raw string is still there, in the tooltip -
+// this just puts a plain label in front of it.
+const ACTION_LABELS: Record<string, string> = {
+  'atom.create': 'Added an agent key',
+  'atom.read': 'Viewed agents',
+  'key.rotate': 'Rotated an agent key',
+  'memory.write': 'Added a memory',
+  'memory.write.queued': 'Agent asked to add a memory (awaiting approval)',
+  'memory.delete': 'Deleted a memory',
+  'subject.erase': 'Erased a person’s data (right to erasure)',
+  'directory.ingest': 'Synced model documentation',
+  'recall.residency_denied': 'Blocked a recall for crossing a data-residency boundary',
+  'context.read': 'Viewed business context',
+  'context.write': 'Updated business context',
+  'context.write.queued': 'Agent asked to update business context (awaiting approval)',
+  'context.delete': 'Reset business context',
+  'context.extract_from_image': 'Read business details from a photo',
+  'decision.read': 'Viewed the decision log',
+  'decision.create': 'Recorded a decision',
+  'decision.write.queued': 'Agent asked to record a decision (awaiting approval)',
+  'decision.outcome_recorded': 'Recorded what actually happened after a decision',
+  'ask.query': 'Asked a question',
+  'sketchbook.write': 'Wrote a sketchbook entry',
+  'sketchbook.read': 'Read a sketchbook',
+  'sketchbook.read_all': 'Viewed every sketchbook (Owner)',
+  'user.create': 'Added a teammate',
+  'user.deactivate': 'Removed a teammate’s access',
+  'tenant.register': 'Registered this workspace',
+  'tenant.rename': 'Renamed the workspace',
+  'tenant.training_consent': 'Changed the training-data consent setting',
+  'training_corpus.export': 'Exported the training corpus to storage',
+  'policy.create': 'Added a custom policy',
+  'policy.delete': 'Removed a custom policy',
+};
+
+const actionLabel = (action: string): string => {
+  const exact = ACTION_LABELS[action];
+  if (exact) return exact;
+  if (action.startsWith('atom.transition.')) {
+    const transition = action.slice('atom.transition.'.length);
+    return `Changed an agent's status to ${transition}`;
+  }
+  if (action.endsWith('.approved')) return 'Approved a pending agent action';
+  if (action.endsWith('.denied')) return 'Denied a pending agent action';
+  const prefix = Object.keys(ACTION_LABELS).find((k) => action.startsWith(k));
+  if (prefix) return ACTION_LABELS[prefix];
+  return action;
+};
+
 const toneClasses: Record<'neutral' | 'accent' | 'warning', string> = {
   neutral: 'text-ink-secondary',
   accent: 'text-accent',
@@ -225,9 +277,9 @@ export const Feed: React.FC = () => {
                         <div className="col-span-2 text-ink-primary font-mono truncate" title={entry.actor}>
                           {entry.actor || '—'}
                         </div>
-                        <div className={`col-span-3 flex items-center gap-6 font-mono truncate ${toneClasses[meta.tone]}`} title={entry.action}>
+                        <div className={`col-span-3 flex items-center gap-6 truncate ${toneClasses[meta.tone]}`} title={entry.action}>
                           <Icon size={12} className="shrink-0" />
-                          <span className="truncate">{entry.action}</span>
+                          <span className="truncate font-prose">{actionLabel(entry.action)}</span>
                         </div>
                         <div className="col-span-2 text-ink-secondary font-mono truncate" title={entry.resource}>
                           {entry.resource}
