@@ -32,6 +32,9 @@ import { api } from '../api';
 
 const LEGAL_NAME = 'Comfort Curators Private Limited';
 const CIN = 'U47912HR2026PTC144195';
+// The actual public repository, not a placeholder - AGPL-3.0's network-use
+// clause (§13) is satisfied only by a real, working offer of the source.
+const SOURCE_CODE_URL = 'https://github.com/comfortcurators/Curatom';
 
 const COMPLIANCE_LINKS = [
   { to: '/privacy-policy', label: 'Privacy Policy' },
@@ -519,6 +522,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </a>
               </p>
               <nav className="flex flex-wrap gap-x-20 gap-y-8">
+                {/* AGPL-3.0 §13: a running instance offered over a network must give
+                    users a way to get the Corresponding Source. This is that offer -
+                    keep it wherever the app is reachable, not only in the repo itself. */}
+                <a
+                  href={SOURCE_CODE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-11 text-ink-secondary hover:text-ink-primary transition-colors"
+                >
+                  Source Code (AGPL-3.0)
+                </a>
                 {COMPLIANCE_LINKS.map((link) => (
                   <Link key={link.to} to={link.to} className="text-11 text-ink-secondary hover:text-ink-primary transition-colors">
                     {link.label}

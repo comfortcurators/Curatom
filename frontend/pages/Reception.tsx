@@ -620,6 +620,19 @@ export const Reception: React.FC = () => {
       <div className="mt-36 text-11 text-ink-secondary font-mono opacity-50 relative z-10">
         Every sign-in is verified by the server — nothing your browser sends is trusted on its own.
       </div>
+      {/* AGPL-3.0 §13 source offer - this is the network-reachable entry
+          point before a session exists, so the offer has to live here too,
+          not only behind the authenticated Layout shell. */}
+      <div className="mt-8 text-11 relative z-10">
+        <a
+          href="https://github.com/comfortcurators/Curatom"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-ink-secondary hover:text-ink-primary transition-colors underline decoration-surface-400 underline-offset-2"
+        >
+          Source Code (AGPL-3.0)
+        </a>
+      </div>
     </div>
   );
 };
