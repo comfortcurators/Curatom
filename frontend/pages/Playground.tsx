@@ -40,10 +40,15 @@ export const Playground: React.FC = () => {
       const res = await api.recall(selectedAtomId, selectedMemoryId, query);
       setResult(res);
     } catch (e: any) {
-      // A residency refusal throws a real HTTP 403 - it never reaches this
+      // A policy refusal throws a real HTTP 403 - it never reaches this
       // page as {error: ...} in a 200 body, so the styled violation panel
       // below was dead code until this routed it here instead of an alert.
-      if (/residency/i.test(e.message || '')) {
+      // Found live: classification_denied (an atom's classification
+      // ceiling too low for the memory) hit this same catch block but the
+      // regex only matched "residency", so an equally real ABAC refusal
+      // fell through to a jarring native alert() instead of the panel
+      // this page exists to demonstrate.
+      if (/residency|classification/i.test(e.message || '')) {
         setResult({ error: e.message });
       } else {
         alert(`Recall error: ${e.message}`);
@@ -153,7 +158,8 @@ export const Playground: React.FC = () => {
                 {result.error ? (
                   <div className="bg-danger-soft border border-danger-border rounded p-16 space-y-6 text-12 font-mono text-danger">
                     <div className="flex items-center gap-6 font-medium">
-                      <XCircle size={16} /> DATA RESIDENCY VIOLATION
+                      <XCircle size={16} />
+                      {/residency/i.test(result.error) ? 'DATA RESIDENCY VIOLATION' : 'CLASSIFICATION CEILING VIOLATION'}
                     </div>
                     <p className="font-prose text-ink-primary">{result.error}</p>
                   </div>
