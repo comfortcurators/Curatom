@@ -99,7 +99,7 @@ export const Team: React.FC = () => {
       const res = await api.exportTrainingCorpus();
       alert(
         res.entry_count === 0
-          ? 'Nothing to export yet — no consenting tenant has any corpus entries.'
+          ? 'Nothing to export yet — no consenting account has any corpus entries.'
           : `Wrote ${res.entry_count} entries to gs://${res.bucket}/${res.object}`
       );
     } catch (e: any) {
@@ -261,7 +261,7 @@ export const Team: React.FC = () => {
         ) : (
           <div className="flex items-center justify-between gap-12">
             <p className="text-13 text-ink-primary font-prose truncate">
-              {tenant?.name || <span className="text-ink-secondary">Not set — showing your raw tenant ID everywhere instead.</span>}
+              {tenant?.name || <span className="text-ink-secondary">Not set — showing your raw workspace ID everywhere instead.</span>}
             </p>
             <button
               onClick={startEditingName}

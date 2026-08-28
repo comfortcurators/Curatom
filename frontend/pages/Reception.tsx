@@ -198,7 +198,7 @@ export const Reception: React.FC = () => {
         {mode === 'select' && (
           <div className="space-y-16">
             <h2 className="text-15 font-medium text-ink-primary mb-24 text-center font-display">
-              Enterprise Identity Verification
+              Sign in to Curatom
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
               <button
@@ -207,8 +207,8 @@ export const Reception: React.FC = () => {
               >
                 <Shield size={32} className="text-ink-secondary group-hover:text-accent transition-colors" />
                 <div>
-                  <span className="text-15 font-medium text-ink-primary block">Human Principal</span>
-                  <span className="text-11 text-ink-secondary mt-4 block">Authenticate with server-signed token</span>
+                  <span className="text-15 font-medium text-ink-primary block">I'm a person</span>
+                  <span className="text-11 text-ink-secondary mt-4 block">Sign in with your username and password</span>
                 </div>
               </button>
               <button
@@ -217,8 +217,8 @@ export const Reception: React.FC = () => {
               >
                 <Cpu size={32} className="text-ink-secondary group-hover:text-accent transition-colors" />
                 <div>
-                  <span className="text-15 font-medium text-ink-primary block">Agent Principal</span>
-                  <span className="text-11 text-ink-secondary mt-4 block">Handshake and profile derivation</span>
+                  <span className="text-15 font-medium text-ink-primary block">I'm an AI agent</span>
+                  <span className="text-11 text-ink-secondary mt-4 block">Connect and get set up automatically</span>
                 </div>
               </button>
             </div>
@@ -227,7 +227,7 @@ export const Reception: React.FC = () => {
               className="w-full flex items-center justify-center gap-8 p-16 rounded-md border border-dashed border-surface-400 hover:border-accent hover:text-accent text-ink-secondary transition-all text-13 font-medium"
             >
               <Building2 size={16} />
-              New business — register your own tenant
+              New business — create your workspace
             </button>
           </div>
         )}
@@ -237,7 +237,7 @@ export const Reception: React.FC = () => {
             <div className="flex items-center justify-between mb-16">
               <button type="button" onClick={() => setMode('select')} className="text-ink-secondary hover:text-ink-primary text-12 font-mono">← Back</button>
               <h2 className="text-15 font-medium text-ink-primary font-display flex items-center gap-6">
-                <Lock size={14} className="text-accent" /> Principal Sign-In
+                <Lock size={14} className="text-accent" /> Sign In
               </h2>
             </div>
 
@@ -248,8 +248,8 @@ export const Reception: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-11 font-mono text-ink-secondary mb-6">Principal Identifier (Username)</label>
-              <input 
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Username</label>
+              <input
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
@@ -259,8 +259,8 @@ export const Reception: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-11 font-mono text-ink-secondary mb-6">Password / Secret</label>
-              <input 
+              <label className="block text-11 font-mono text-ink-secondary mb-6">Password</label>
+              <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -270,18 +270,18 @@ export const Reception: React.FC = () => {
             </div>
 
             <div className="pt-8">
-              <button 
+              <button
                 type="submit"
                 disabled={loginLoading}
                 className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
               >
                 {loginLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-                Authenticate Session
+                Sign In
               </button>
             </div>
 
             <p className="text-11 text-ink-secondary font-mono text-center pt-8">
-              Roles and grants are verified and resolved server-side from your authenticated principal record.
+              Your role and access are set by your account, not anything typed here.
             </p>
             <button
               type="button"
@@ -448,12 +448,12 @@ export const Reception: React.FC = () => {
                 className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-accent hover:bg-accent/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
               >
                 {regLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-                Create Tenant & Sign In
+                Create Workspace & Sign In
               </button>
             </div>
 
             <p className="text-11 text-ink-secondary font-mono text-center pt-8">
-              You become the Owner of a new, fully isolated tenant. No data is shared with any other business on Curatom.
+              You become the Owner of a new, fully isolated workspace. No data is shared with any other business on Curatom.
             </p>
           </form>
         )}
@@ -525,18 +525,19 @@ export const Reception: React.FC = () => {
           <div>
             <div className="flex items-center gap-16 mb-24">
               <button onClick={() => setMode('select')} className="text-ink-secondary hover:text-ink-primary text-12 font-mono">← Back</button>
-              <h2 className="text-15 font-medium text-ink-primary font-display">Agent Principal Identification</h2>
+              <h2 className="text-15 font-medium text-ink-primary font-display">Connect an AI Agent</h2>
             </div>
-            
+
             {!inferredProfile ? (
               <div className="space-y-16">
                 <p className="text-13 text-ink-secondary font-prose leading-relaxed">
-                  Provide a model family hint or paste a sample response. Curatom queries grounded documentation to derive format, persona, and accuracy parameters.
+                  Tell us which AI model this is, or paste something it wrote. Curatom checks real documentation to
+                  work out the right settings automatically.
                 </p>
                 <div>
-                  <label className="block text-11 font-mono text-ink-secondary mb-6">Model Family Identifier</label>
-                  <input 
-                    type="text" 
+                  <label className="block text-11 font-mono text-ink-secondary mb-6">AI Model</label>
+                  <input
+                    type="text"
                     value={agentHint}
                     onChange={e => setAgentHint(e.target.value)}
                     className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary focus:border-accent outline-none font-mono"
@@ -545,31 +546,31 @@ export const Reception: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-11 font-mono text-ink-secondary mb-6">Sample Output</label>
-                  <textarea 
+                  <textarea
                     value={agentSample}
                     onChange={e => setAgentSample(e.target.value)}
                     className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-12 text-ink-primary focus:border-accent outline-none h-28 font-mono"
                     placeholder="Paste sample output here..."
                   />
                 </div>
-                <button 
+                <button
                   onClick={handleAgentIdentify}
                   disabled={loading || (!agentHint && !agentSample)}
                   className="w-full flex justify-center items-center gap-8 px-16 py-10 bg-surface-300 hover:bg-surface-400 text-ink-primary rounded-md transition-colors text-13 font-medium disabled:opacity-50"
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : <Cpu size={16} />}
-                  Derive Grounded Profile
+                  Look Up Settings
                 </button>
               </div>
             ) : (
               <div className="space-y-16">
                 <div className="p-16 bg-surface-200 border border-surface-400 rounded-md space-y-10 text-12">
-                  <h3 className="text-11 text-accent font-mono uppercase tracking-wider">Derived Profile (Grounded)</h3>
+                  <h3 className="text-11 text-accent font-mono uppercase tracking-wider">Settings found</h3>
                   <div><span className="text-ink-secondary">Output Format:</span> <span className="text-ink-primary font-mono ml-4">{inferredProfile.profile.format}</span></div>
                   <div><span className="text-ink-secondary">Accuracy Tolerance:</span> <span className="text-ink-primary ml-4">{inferredProfile.profile.accuracy_tolerance}</span></div>
                   <div><span className="text-ink-secondary">Retention Window:</span> <span className="text-ink-primary font-mono ml-4">{inferredProfile.profile.retention_window_hours}h</span></div>
                   <div className="pt-8 border-t border-surface-300">
-                    <span className="text-ink-secondary block mb-4">Grounded Citations:</span>
+                    <span className="text-ink-secondary block mb-4">Sources:</span>
                     <ul className="space-y-2 text-11 font-mono text-ink-secondary">
                       {inferredProfile.sources.map((s, i) => (
                         <li key={i} className="truncate">
@@ -587,31 +588,31 @@ export const Reception: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-11 font-mono text-ink-secondary mb-6">Assign Atom Name</label>
-                  <input 
-                    type="text" 
+                  <label className="block text-11 font-mono text-ink-secondary mb-6">Give it a name</label>
+                  <input
+                    type="text"
                     value={agentName}
                     onChange={e => setAgentName(e.target.value)}
                     className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary focus:border-accent outline-none"
                     placeholder="e.g. Booking Orchestrator APAC"
                   />
                 </div>
-                <button 
+                <button
                   onClick={handleAgentRegister}
                   disabled={loading || !agentName}
                   className="w-full flex justify-center items-center gap-8 px-16 py-10 bg-accent hover:bg-accent/90 text-canvas rounded-md transition-colors text-13 font-medium disabled:opacity-50"
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-                  Register & Issue Key
+                  Connect & Get Key
                 </button>
               </div>
             )}
           </div>
         )}
       </div>
-      
+
       <div className="mt-36 text-11 text-ink-secondary font-mono opacity-50">
-        SERVER-SIDE IDENTITY RESOLUTION • ZERO CLIENT SPOOFING
+        Every sign-in is verified by the server — nothing your browser sends is trusted on its own.
       </div>
     </div>
   );

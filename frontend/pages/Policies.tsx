@@ -179,7 +179,7 @@ export const Policies: React.FC = () => {
         {/* Rules Table */}
         <div className="lg:col-span-2 space-y-16">
           <div className="flex items-center justify-between">
-            <h2 className="text-13 font-mono text-ink-secondary uppercase tracking-wider">Active Tenant Policies</h2>
+            <h2 className="text-13 font-mono text-ink-secondary uppercase tracking-wider">Active Policies</h2>
             <button
               onClick={() => setShowForm((s) => !s)}
               className="flex items-center gap-6 px-10 py-5 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded text-11 font-mono transition-colors"

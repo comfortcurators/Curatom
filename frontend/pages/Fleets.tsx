@@ -61,7 +61,7 @@ export const Fleets: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-24">
           <div className="lg:col-span-1 space-y-12">
-            <h2 className="text-11 font-mono text-ink-secondary uppercase tracking-wider">Tenant Fleets</h2>
+            <h2 className="text-11 font-mono text-ink-secondary uppercase tracking-wider">Your Fleets</h2>
             {fleets.length === 0 && (
               <div className="text-center py-32 text-ink-secondary text-13 font-prose">
                 No fleets yet. Connecting your first agent creates one automatically.

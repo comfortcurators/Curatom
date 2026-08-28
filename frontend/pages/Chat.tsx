@@ -10,7 +10,7 @@ export const Chat: React.FC = () => {
     { 
       id: '1', 
       role: 'system', 
-      text: 'Curatom Fleet Control Plane initialized. Multi-tenant policy active. Type your command, query, or select an operational scenario.' 
+      text: 'Curatom Fleet Control Plane initialized. Policy checks active. Type your command, query, or select an operational scenario.'
     }
   ]);
   const [input, setInput] = useState('');
@@ -145,7 +145,7 @@ export const Chat: React.FC = () => {
           <div className="flex justify-start">
             <div className="bg-surface-200 border border-surface-300 rounded-lg p-16 flex items-center gap-8 text-ink-secondary text-12 font-mono">
               <Loader2 size={14} className="animate-spin text-accent" />
-              <span>Evaluating policy and executing tenant vector retrieval...</span>
+              <span>Evaluating policy and retrieving relevant memory...</span>
             </div>
           </div>
         )}
