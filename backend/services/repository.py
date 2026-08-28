@@ -245,7 +245,24 @@ class TenantScopedRepository:
             "id": fleet_id,
             "name": name,
             "description": description,
-            "default_profile": {},
+            # Never populated before - Fleets.tsx calls
+            # selectedFleet.residency_regions.map(...) unconditionally, so an
+            # undefined here threw on every render and crashed the whole app
+            # to a blank screen (no error boundary catches it). status was
+            # the same shape of bug, just silent instead of fatal - it
+            # rendered as the literal text "undefined". Same defaults
+            # RegisterAtomForm already uses for a freshly connected agent.
+            "default_profile": {
+                "format": "YAML",
+                "retention_window_hours": 168,
+                "accuracy_tolerance": "High",
+                "system_persona": "You are a precise enterprise agent.",
+                "max_output_tokens": 2048,
+                "permitted_regions": ["SG", "US", "IN", "EU"],
+                "classification_ceiling": "internal",
+            },
+            "residency_regions": ["SG", "US", "IN", "EU"],
+            "status": "active",
             "org_id": self.org_id,
             "tenant_id": self.tenant_id,
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),

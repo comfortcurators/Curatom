@@ -787,7 +787,36 @@ async def list_fleets(
     # silently for every fleet, every tenant, always - console.error only.
     # Aliasing here instead of renaming the stored field, which every
     # other document type in this app also calls "id".
-    items = [{**item, "fleet_id": item.get("id")} for item in items]
+    # create_fleet() didn't set residency_regions or status until this fix -
+    # every fleet document created before it is missing both. Fleets.tsx
+    # calls selectedFleet.residency_regions.map(...) unconditionally, so a
+    # fleet from before this fix still crashes the page to blank even
+    # though new fleets now get the fields. Backfilling at read time fixes
+    # every existing fleet immediately, in every tenant, without touching
+    # stored data.
+    default_profile_fallback = {
+        "format": "YAML",
+        "retention_window_hours": 168,
+        "accuracy_tolerance": "High",
+        "system_persona": "You are a precise enterprise agent.",
+        "max_output_tokens": 2048,
+        "permitted_regions": ["SG", "US", "IN", "EU"],
+        "classification_ceiling": "internal",
+    }
+    items = [
+        {
+            "residency_regions": ["SG", "US", "IN", "EU"],
+            "status": "active",
+            **item,
+            # An empty {} (every fleet created before this fix) is present,
+            # not missing, so a plain **item merge wouldn't backfill it -
+            # the "Default Inherited Profile" panel rendered three blank
+            # fields instead of crashing, same root cause as the other two.
+            "default_profile": {**default_profile_fallback, **(item.get("default_profile") or {})},
+            "fleet_id": item.get("id"),
+        }
+        for item in items
+    ]
     return {"items": items, "next_cursor": next_cursor}
 
 @app.get("/fleets/{fleet_id}/health")

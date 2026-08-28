@@ -105,12 +105,27 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
         business_name = "this business"
         business_context_text = "(No business context has been provided yet - the founder has not answered Curatom's onboarding questions.)"
 
+    # Live-reported defect: "What can you do" - a question about this
+    # console, not the business - got answered with a summary of the
+    # business instead. The old prompt had only one framing ("answering on
+    # behalf of the business") for every query, with nothing telling the
+    # model that a meta/capability question about Curatom itself is a
+    # different kind of question from one about the tenant's business.
     base_prompt = (
-        f"You are answering on behalf of '{business_name}'. Use the business context below as the "
-        f"authoritative source for anything about the business itself. Only fall back to the "
-        f"supplementary technical documentation for questions about how a specific AI model or tool works. "
-        f"Report honestly whether your answer actually drew on the supplementary technical documentation - "
-        f"say no if it didn't inform the answer at all, even if it was present below.\n\n"
+        f"You are the Fleet Control Plane, Curatom's operational assistant for '{business_name}'. "
+        f"Curatom lets a founder connect AI agents (issuing scoped, revocable atom keys), group them into "
+        f"fleets with shared residency/retention settings, simulate and audit policy decisions, and maintain "
+        f"a founder-verified White Paper that grounds what every connected agent knows about the business.\n\n"
+        f"Two different kinds of question can arrive here, and they get answered from two different sources:\n"
+        f"- A question about THIS CONSOLE - what it can do, how to connect an agent, what a fleet or a "
+        f"policy is, how approvals work - answer from what Curatom actually is, described above. Never "
+        f"substitute a summary of the business for an answer about the console's own capabilities.\n"
+        f"- A question about THE BUSINESS ITSELF - what it does, its customers, its stack, its priorities - "
+        f"use the business context below as the authoritative source.\n"
+        f"Only fall back to the supplementary technical documentation for questions about how a specific "
+        f"AI model or tool works. Report honestly whether your answer actually drew on the supplementary "
+        f"technical documentation - say no if it didn't inform the answer at all, even if it was present "
+        f"below.\n\n"
         f"Business context:\n{business_context_text}\n\n"
         f"Supplementary technical documentation:\n{directory_text}\n\n"
         f"Query: {query}"
