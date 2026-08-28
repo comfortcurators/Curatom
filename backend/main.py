@@ -1740,26 +1740,45 @@ async def get_business_context(ctx: AuthContext = Depends(authorize("context.rea
     context = await repo.get_business_context()
     payload = {"onboarded": True, "context": context} if context else {"onboarded": False, "context": None}
     # An agent landing on this endpoint for the first time got a bare field
-    # dump - no indication of what Curatom even is or why this data should
-    # be trusted. Founder-requested: introduce itself and the business
-    # properly, the way the app was supposed to. Only for agent callers -
-    # a human operator already knows what Curatom is; this greeting exists
-    # for the cold-start case a fresh AI agent actually has. Built only
-    # from real, already-verified fields - never fabricates a summary for
-    # a tenant that hasn't answered the White Paper yet.
+    # dump - no indication of what Curatom even is, which key reached it, or
+    # what it's allowed to do next. First version of this greeting was the
+    # same generic paragraph for every tenant - founder feedback: identify
+    # *this* key and *this* company specifically, not a template that reads
+    # the same for anyone who registers. Only for agent callers - a human
+    # operator already knows what Curatom is. Built only from real,
+    # already-verified fields (the atom's own registered name/model_family,
+    # its actual write permission) - never fabricates a summary for a
+    # tenant that hasn't answered the White Paper yet, and never invents a
+    # human name Curatom was never given one.
     if ctx.principal_type == "agent":
+        atom = await repo.get_atom(ctx.principal_id)
+        key_label = f"'{atom.get('name')}' ({atom.get('model_family')})" if atom else "this key"
         if context:
+            business = context.get('business_name') or 'this business'
+            if ctx.requires_approval:
+                write_line = (
+                    f"You may propose changes to {business}'s White Paper with PUT /context, "
+                    f"but nothing you write takes effect until a human at {business} approves it - "
+                    f"every proposal is queued, never applied silently."
+                )
+            else:
+                write_line = (
+                    f"You're trusted to write directly - PUT /context updates {business}'s "
+                    f"White Paper immediately, no approval step."
+                )
             payload["greeting"] = (
-                f"You've reached Curatom - the founder-verified source of truth for what "
-                f"{context.get('business_name') or 'this business'} is and how you should act on "
-                f"its behalf. Nothing below is guessed; it's what the founder actually wrote. "
-                f"In short: {context.get('what_you_do') or 'no summary given yet'}."
+                f"You've reached Curatom, the founder-verified source of truth {business} uses "
+                f"for what it is and how agents should act on its behalf. You're connected as "
+                f"{key_label}. Nothing below is guessed - it's what the founder actually wrote. "
+                f"In short, {business} {context.get('what_you_do') or 'has not summarised what it does yet'}. "
+                f"{write_line} Ask about anything below; don't assume anything that isn't."
             )
         else:
             payload["greeting"] = (
-                "You've reached Curatom, but this business hasn't answered its White Paper yet - "
-                "there is no verified context to act on. Don't infer or assume anything about "
-                "the business; ask a human operator to complete onboarding first."
+                f"You've reached Curatom, connected as {key_label}, but this business hasn't "
+                "answered its White Paper yet - there is no verified context to act on. Don't "
+                "infer or assume anything about the business; ask a human operator to complete "
+                "onboarding first."
             )
     # Reads were previously silent - a founder had no way to know a key had
     # ever looked at their business context, only that one had changed it.
