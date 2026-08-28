@@ -1,3 +1,10 @@
+# Plain-English version, for anyone reading this without the vocabulary:
+#   - The demo login only accepts the actual demo account, nobody else.
+#   - Phone numbers and emails get blacked out wherever they're written
+#     into a memory, including short international formats, not just
+#     the common US style.
+#   - A file exported for training never carries the business or record
+#     it came from - checked directly, not assumed.
 import os
 import sys
 from pathlib import Path

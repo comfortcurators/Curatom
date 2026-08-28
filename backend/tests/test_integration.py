@@ -1,3 +1,21 @@
+# Plain-English map of what's actually being checked below, for anyone
+# reading this file without the vocabulary. Everything past this comment
+# is written for engineers - this part isn't.
+#
+#   - Login only works with the right password, for the right person.
+#   - A tenant can never see another tenant's agents, memories, or data -
+#     tested by literally faking a second business and confirming it gets
+#     back nothing.
+#   - Deleting a person's data for real ("right to erasure") actually
+#     deletes everything linked to them, not just the obvious record.
+#   - Roles that are supposed to be read-only (Auditor, Reviewer) can
+#     read what they're meant to and nothing else - both directions
+#     checked, since a role that can't even do its one allowed job is as
+#     broken as one that can do too much.
+#   - The Fleet health panel doesn't invent a number it hasn't measured.
+#   - The /tasks feature stays honestly "not built yet" rather than
+#     quietly pretending to work.
+#
 import os
 import sys
 from pathlib import Path
