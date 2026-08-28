@@ -238,6 +238,29 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         })}
 
         {visibleGroups.map((group) => {
+          // A group holding exactly one item forced two clicks (expand,
+          // then navigate) to reach one page, and read as two sections for
+          // what's really one destination - "Team" containing only "Team",
+          // "Keys" containing only "Atom Registry". Render it as a single
+          // flat link instead, same as Overview above. Only a group with
+          // more than one real destination earns the expand/collapse.
+          if (group.items.length === 1) {
+            const item = group.items[0];
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={group.id}
+                to={item.path}
+                className={`flex items-center gap-12 px-12 py-8 rounded-md transition-colors duration-150 mt-12 ${
+                  isActive ? 'bg-surface-300 text-accent font-medium' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
+                }`}
+              >
+                <Icon size={16} />
+                <span className="text-13">{item.label}</span>
+              </Link>
+            );
+          }
           const isOpen = !!openGroups[group.id];
           const isGroupActive = group.items.some((item) => item.path === location.pathname);
           const GroupIcon = group.icon;

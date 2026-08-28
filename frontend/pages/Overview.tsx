@@ -82,6 +82,11 @@ export const Overview: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [context, setContext] = useState<BusinessContext | null>(null);
   const [editing, setEditing] = useState(false);
+  // The full context used to render open on every dashboard load - the
+  // founder already knows what they told Curatom, since they're the one
+  // who typed it. Collapsed by default; Edit already covers changing it,
+  // this is only for the rare "what does the AI actually see" check.
+  const [showContext, setShowContext] = useState(false);
   const [agentCount, setAgentCount] = useState<number | null>(null);
   const [questionsToday, setQuestionsToday] = useState<number | null>(null);
   const [issue, setIssue] = useState<string | null>(null);
@@ -208,15 +213,26 @@ export const Overview: React.FC = () => {
         })}
       </div>
 
-      <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24 space-y-16">
-        <h2 className="text-15 text-ink-primary font-medium">What you told Curatom</h2>
-        <ContextField label="What you do" value={context.what_you_do} />
-        <ContextField label="Customers" value={context.customers} />
-        <ContextField label="Current stack" value={context.current_stack} />
-        <ContextField label="Priorities" value={context.priorities} />
-        {context.constraints && <ContextField label="Constraints" value={context.constraints} />}
-        {context.voice_and_tone && <ContextField label="Voice & tone" value={context.voice_and_tone} />}
-        {context.anything_else && <ContextField label="Anything else" value={context.anything_else} />}
+      <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24">
+        <button
+          type="button"
+          onClick={() => setShowContext((v) => !v)}
+          className="flex w-full items-center justify-between text-15 text-ink-primary font-medium"
+        >
+          What you told Curatom
+          <span className="text-12 text-ink-secondary font-mono">{showContext ? 'Hide' : 'Show'}</span>
+        </button>
+        {showContext && (
+          <div className="space-y-16 mt-16">
+            <ContextField label="What you do" value={context.what_you_do} />
+            <ContextField label="Customers" value={context.customers} />
+            <ContextField label="Current stack" value={context.current_stack} />
+            <ContextField label="Priorities" value={context.priorities} />
+            {context.constraints && <ContextField label="Constraints" value={context.constraints} />}
+            {context.voice_and_tone && <ContextField label="Voice & tone" value={context.voice_and_tone} />}
+            {context.anything_else && <ContextField label="Anything else" value={context.anything_else} />}
+          </div>
+        )}
       </div>
 
       <BackupCode />

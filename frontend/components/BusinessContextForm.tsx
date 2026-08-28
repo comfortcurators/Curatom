@@ -220,6 +220,14 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
   const [imageExtracting, setImageExtracting] = useState(false);
   const [imageMessage, setImageMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // First run shows only the 5 fields that actually gate saving - the other
+  // 17 are optional both here and in the backend's BusinessContextPayload,
+  // but rendering all 22 at once read as "fill this whole form before you
+  // can use the dashboard," which it never technically was. Editing an
+  // existing context still shows everything, since by then there's real
+  // content in those optional fields worth seeing and adjusting.
+  const [showOptional, setShowOptional] = useState(!!initial);
+  const optionalCount = QUESTIONS.filter((q) => !q.required).length;
 
   const update = (key: keyof BusinessContext, value: string) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -371,7 +379,7 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
       </div>
 
       <div className="space-y-20">
-        {QUESTIONS.map((q) => (
+        {QUESTIONS.filter((q) => q.required || showOptional).map((q) => (
           <div key={q.key} className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20">
             <label className="block text-14 text-ink-primary font-medium mb-10">
               {q.label}
@@ -395,6 +403,15 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
             )}
           </div>
         ))}
+        {!showOptional && (
+          <button
+            type="button"
+            onClick={() => setShowOptional(true)}
+            className="w-full text-13 text-accent hover:underline font-prose text-left"
+          >
+            + Add more detail ({optionalCount} more optional fields — none of this blocks saving)
+          </button>
+        )}
       </div>
 
       {error && (
