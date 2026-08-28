@@ -22,6 +22,7 @@ import {
   Users,
   ScrollText,
   NotebookPen,
+  Key,
 } from 'lucide-react';
 import { Role } from '../types';
 import { APP_NAME, APP_VERSION, COMPANY_NAME, DEFAULT_TENANT_ID } from '../constants';
@@ -43,20 +44,66 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+// Restructured from a flat Overview + "Technical" catch-all into named
+// groups matching how a founder actually thinks about this app: your
+// business, who has access (people and keys, kept separate), what changed,
+// and — honestly labeled, not hidden behind a generic "Technical" — the
+// long detail that's really for an AI agent or a developer, not you.
 const PRIMARY_NAV = [{ path: '/', icon: Sparkles, label: 'Overview' }];
 
-const TECHNICAL_NAV = [
-  { path: '/chat', icon: MessageSquare, label: 'Fleet Control Plane' },
-  { path: '/fleets', icon: Layers, label: 'Fleet Topology' },
-  { path: '/registry', icon: Network, label: 'Atom Registry' },
-  { path: '/policies', icon: ShieldCheck, label: 'Policy Engine' },
-  { path: '/memory', icon: Database, label: 'Memory Bank' },
-  { path: '/directory', icon: BookOpen, label: 'Model Directory' },
-  { path: '/feed', icon: Activity, label: 'Audit & Telemetry' },
-  { path: '/decisions', icon: ScrollText, label: 'Decision Log' },
-  { path: '/sketchbook', icon: NotebookPen, label: 'Sketchbooks' },
-  { path: '/playground', icon: TerminalSquare, label: 'Proving Ground' },
+interface NavGroup {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  description?: string;
+  items: { path: string; icon: React.ElementType; label: string }[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: 'business',
+    label: 'Business',
+    icon: Building2,
+    items: [{ path: '/sketchbook', icon: NotebookPen, label: 'Sketchbooks' }],
+  },
+  {
+    id: 'team',
+    label: 'Team',
+    icon: Users,
+    items: [], // populated per-role below (Owner-only)
+  },
+  {
+    id: 'keys',
+    label: 'Keys',
+    icon: Key,
+    items: [{ path: '/registry', icon: Network, label: 'Atom Registry' }],
+  },
+  {
+    id: 'changes',
+    label: 'Changes',
+    icon: Activity,
+    items: [
+      { path: '/feed', icon: Activity, label: 'Audit & Telemetry' },
+      { path: '/decisions', icon: ScrollText, label: 'Decision Log' },
+    ],
+  },
+  {
+    id: 'jargon',
+    label: 'Jargon',
+    icon: Wrench,
+    description: "The long technical detail — for an AI agent or a developer, not really for you.",
+    items: [
+      { path: '/chat', icon: MessageSquare, label: 'Fleet Control Plane' },
+      { path: '/fleets', icon: Layers, label: 'Fleet Topology' },
+      { path: '/policies', icon: ShieldCheck, label: 'Policy Engine' },
+      { path: '/memory', icon: Database, label: 'Memory Bank' },
+      { path: '/directory', icon: BookOpen, label: 'Model Directory' },
+      { path: '/playground', icon: TerminalSquare, label: 'Proving Ground' },
+    ],
+  },
 ];
+
+const ALL_NAV_ITEMS = [...PRIMARY_NAV, ...NAV_GROUPS.flatMap((g) => g.items), { path: '/team', icon: Users, label: 'Team' }];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
@@ -67,12 +114,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [tenantName, setTenantName] = useState<string>('');
   const [principalName, setPrincipalName] = useState<string>('guest');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [technicalOpen, setTechnicalOpen] = useState<boolean>(() => {
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     try {
-      return localStorage.getItem('curatom_technical_nav_open') === 'true';
+      const stored = localStorage.getItem('curatom_nav_open_groups');
+      if (stored) return JSON.parse(stored);
     } catch {
-      return false;
+      /* ignore parse/storage failures */
     }
+    // Business, Team and Keys open by default - the day-to-day ones.
+    // Jargon (and Changes) start collapsed, matching the old "Technical"
+    // default, since that's the detail most people never need to open.
+    return { business: true, team: true, keys: true, changes: false, jargon: false };
   });
 
   useEffect(() => {
@@ -105,11 +157,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  const toggleTechnical = () => {
-    setTechnicalOpen((prev) => {
-      const next = !prev;
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
       try {
-        localStorage.setItem('curatom_technical_nav_open', String(next));
+        localStorage.setItem('curatom_nav_open_groups', JSON.stringify(next));
       } catch {
         /* ignore storage failures */
       }
@@ -129,12 +181,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     return <>{children}</>;
   }
 
-  const primaryNav = role === 'Owner' ? [...PRIMARY_NAV, { path: '/team', icon: Users, label: 'Team' }] : PRIMARY_NAV;
-  const isTechnicalActive = TECHNICAL_NAV.some((item) => item.path === location.pathname);
+  const visibleGroups = NAV_GROUPS.map((g) =>
+    g.id === 'team' && role === 'Owner'
+      ? { ...g, items: [{ path: '/team', icon: Users, label: 'Team' }] }
+      : g
+  ).filter((g) => g.id !== 'team' || role === 'Owner');
   const pageTitle =
     location.pathname === '/'
       ? 'Overview'
-      : [...primaryNav, ...TECHNICAL_NAV].find((item) => item.path === location.pathname)?.label ||
+      : ALL_NAV_ITEMS.find((item) => item.path === location.pathname)?.label ||
         location.pathname.replace(/^\/+/, '').replace(/-/g, ' ');
 
   const sidebarContent = (
@@ -165,7 +220,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       <nav className="flex-1 py-16 px-12 space-y-4 overflow-y-auto">
-        {primaryNav.map((item) => {
+        {PRIMARY_NAV.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
           return (
@@ -182,44 +237,53 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           );
         })}
 
-        <div className="pt-12">
-          <button
-            onClick={toggleTechnical}
-            className={`w-full flex items-center justify-between gap-8 px-12 py-8 rounded-md text-ink-secondary hover:bg-surface-200 hover:text-ink-primary transition-colors duration-150 ${
-              isTechnicalActive ? 'text-ink-primary' : ''
-            }`}
-          >
-            <span className="flex items-center gap-12">
-              <Wrench size={16} />
-              <span className="text-13">Technical</span>
-            </span>
-            <ChevronDown size={14} className={`transition-transform duration-150 ${technicalOpen ? 'rotate-180' : ''}`} />
-          </button>
-          <p className="px-12 pt-4 pb-2 text-10 text-ink-secondary font-prose leading-snug">
-            Engineering detail, mostly for developers and AI agents.
-          </p>
+        {visibleGroups.map((group) => {
+          const isOpen = !!openGroups[group.id];
+          const isGroupActive = group.items.some((item) => item.path === location.pathname);
+          const GroupIcon = group.icon;
+          return (
+            <div key={group.id} className="pt-12">
+              <button
+                onClick={() => toggleGroup(group.id)}
+                className={`w-full flex items-center justify-between gap-8 px-12 py-8 rounded-md text-ink-secondary hover:bg-surface-200 hover:text-ink-primary transition-colors duration-150 ${
+                  isGroupActive ? 'text-ink-primary' : ''
+                }`}
+              >
+                <span className="flex items-center gap-12">
+                  <GroupIcon size={16} />
+                  <span className="text-13">{group.label}</span>
+                </span>
+                <ChevronDown size={14} className={`transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {group.description && (
+                <p className="px-12 pt-4 pb-2 text-10 text-ink-secondary font-prose leading-snug">
+                  {group.description}
+                </p>
+              )}
 
-          {technicalOpen && (
-            <div className="mt-4 space-y-4 border-l border-surface-300 ml-16 pl-8">
-              {TECHNICAL_NAV.map((item) => {
-                const isActive = location.pathname === item.path;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center gap-10 px-10 py-6 rounded-md transition-colors duration-150 ${
-                      isActive ? 'bg-surface-300 text-accent font-medium' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
-                    }`}
-                  >
-                    <Icon size={14} />
-                    <span className="text-12">{item.label}</span>
-                  </Link>
-                );
-              })}
+              {isOpen && (
+                <div className="mt-4 space-y-4 border-l border-surface-300 ml-16 pl-8">
+                  {group.items.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`flex items-center gap-10 px-10 py-6 rounded-md transition-colors duration-150 ${
+                          isActive ? 'bg-surface-300 text-accent font-medium' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
+                        }`}
+                      >
+                        <Icon size={14} />
+                        <span className="text-12">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })}
       </nav>
 
       <div className="p-16 border-t border-surface-300 bg-surface-100">

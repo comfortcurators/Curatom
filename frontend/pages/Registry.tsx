@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Copy, Cpu, Key, Loader2, RefreshCw, X } from 'lucide-react';
+import { Check, Copy, Cpu, Key, Loader2, Plus, RefreshCw, X } from 'lucide-react';
 import { api } from '../api';
 import { Atom } from '../types';
+import { RegisterAtomForm } from '../components/RegisterAtomForm';
 
 // Mirrors the backend's real state machine (main.py's transition_atom
 // `legal` map). Only 'active' <-> 'quarantined' had buttons before - an
@@ -32,6 +33,7 @@ export const Registry: React.FC = () => {
     gracePeriodHours: number;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const fetchAtoms = async () => {
     try {
@@ -107,7 +109,17 @@ export const Registry: React.FC = () => {
             Fleet agents with per-atom profiles, residency boundaries, and verified cryptographic credentials.
           </p>
         </div>
+        <button
+          onClick={() => setAddOpen((v) => !v)}
+          className="flex items-center gap-8 px-14 py-8 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md transition-colors text-13 font-medium shrink-0"
+        >
+          <Plus size={15} /> {addOpen ? 'Close' : 'Add key'}
+        </button>
       </div>
+
+      {addOpen && (
+        <RegisterAtomForm title="Add another agent key" onConnected={fetchAtoms} />
+      )}
 
       {loading ? (
         <div className="flex justify-center py-48 text-ink-secondary">
