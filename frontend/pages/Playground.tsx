@@ -151,7 +151,7 @@ export const Playground: React.FC = () => {
             {result && !loading && (
               <div className="flex-1 flex flex-col space-y-16">
                 {result.error ? (
-                  <div className="bg-surface-200 border border-accent/40 rounded p-16 space-y-6 text-12 font-mono text-accent">
+                  <div className="bg-danger-soft border border-danger-border rounded p-16 space-y-6 text-12 font-mono text-danger">
                     <div className="flex items-center gap-6 font-medium">
                       <XCircle size={16} /> DATA RESIDENCY VIOLATION
                     </div>
