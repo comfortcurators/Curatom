@@ -264,7 +264,7 @@ export const Policies: React.FC = () => {
                       <button
                         onClick={() => handleDeletePolicy(p.policy_id)}
                         disabled={deletingId === p.policy_id}
-                        className="text-ink-secondary hover:text-danger transition-colors p-4 rounded hover:bg-danger-soft disabled:opacity-40"
+                        className="text-ink-secondary hover:text-accent transition-colors p-4 rounded hover:bg-accent/20 disabled:opacity-40"
                         title="Remove this policy"
                       >
                         <Trash2 size={13} />

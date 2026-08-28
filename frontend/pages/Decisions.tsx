@@ -5,7 +5,7 @@ import { Decision } from '../types';
 
 const OUTCOME_META: Record<string, { icon: React.ElementType; className: string; label: string }> = {
   positive: { icon: CheckCircle2, className: 'text-accent', label: 'Held up' },
-  negative: { icon: XCircle, className: 'text-danger', label: 'Regressed' },
+  negative: { icon: XCircle, className: 'text-accent', label: 'Regressed' },
   neutral: { icon: MinusCircle, className: 'text-ink-secondary', label: 'Mixed / neutral' },
 };
 
@@ -136,7 +136,7 @@ export const Decisions: React.FC = () => {
           <Loader2 className="animate-spin" size={24} />
         </div>
       ) : error ? (
-        <div className="text-center py-48 text-danger text-13 font-prose">{error}</div>
+        <div className="text-center py-48 text-accent text-13 font-prose">{error}</div>
       ) : decisions.length === 0 ? (
         <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-32 text-center text-13 text-ink-secondary font-prose">
           No decisions recorded yet. Record one whenever a model or vendor's claim shapes a real choice — the value
@@ -171,11 +171,7 @@ export const Decisions: React.FC = () => {
                 )}
 
                 {d.outcome_result ? (
-                  <div className={`flex items-start gap-8 rounded-md p-12 border ${
-                    d.outcome_result === 'negative'
-                      ? 'bg-danger-soft border-danger-border'
-                      : 'bg-surface-200 border-surface-400'
-                  }`}>
+                  <div className="flex items-start gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
                     {meta && <meta.icon size={16} className={`${meta.className} shrink-0 mt-1`} />}
                     <div>
                       <div className="text-12 text-ink-primary font-medium">{meta?.label || d.outcome_result}</div>

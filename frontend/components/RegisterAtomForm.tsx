@@ -132,7 +132,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
           It can still do everything it's capable of, but nothing it adds or changes takes effect until you approve it — you'll see every attempt in the Team page.
         </span>
       </label>
-      {error && <div className="text-13 text-danger font-prose">{error}</div>}
+      {error && <div className="text-13 text-accent font-prose">{error}</div>}
       <button
         type="submit"
         disabled={saving}

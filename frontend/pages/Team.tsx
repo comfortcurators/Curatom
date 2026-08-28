@@ -396,7 +396,7 @@ export const Team: React.FC = () => {
         <p className="text-11 text-ink-secondary font-prose">{ROLE_DESCRIPTIONS[role]}</p>
 
         {error && (
-          <div className="text-13 text-danger font-prose bg-surface-200 border border-surface-400 rounded-md p-10">{error}</div>
+          <div className="text-13 text-accent font-prose bg-surface-200 border border-surface-400 rounded-md p-10">{error}</div>
         )}
 
         <button

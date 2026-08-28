@@ -82,7 +82,7 @@ const actionLabel = (action: string): string => {
 const toneClasses: Record<'neutral' | 'accent' | 'warning', string> = {
   neutral: 'text-ink-secondary',
   accent: 'text-accent',
-  warning: 'text-danger',
+  warning: 'text-accent',
 };
 
 const formatTime = (iso: string) => {
@@ -256,7 +256,7 @@ export const Feed: React.FC = () => {
                 {auditLoading && auditItems.length === 0 ? (
                   <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
                 ) : auditError ? (
-                  <div className="text-center py-48 text-danger text-13 font-prose flex flex-col items-center gap-8">
+                  <div className="text-center py-48 text-accent text-13 font-prose flex flex-col items-center gap-8">
                     <ShieldAlert size={20} />
                     {auditError}
                   </div>

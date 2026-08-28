@@ -390,7 +390,7 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
       </div>
 
       {error && (
-        <div className="text-13 text-danger font-prose bg-surface-200 border border-surface-400 rounded-md p-12">
+        <div className="text-13 text-accent font-prose bg-surface-200 border border-surface-400 rounded-md p-12">
           {error}
         </div>
       )}
