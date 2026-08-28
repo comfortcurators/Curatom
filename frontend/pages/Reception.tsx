@@ -4,7 +4,8 @@ import { Shield, Code, Eye, Briefcase, Cpu, ArrowRight, Loader2, FileSearch, Loc
 import { Role, AtomProfile } from '../types';
 import { APP_NAME, COMPANY_LEGAL_NAME } from '../constants';
 import { api } from '../api';
-import { WovenLocusField } from '../components/WovenLocusField';
+// WovenLocusField is now mounted once at the app root (App.tsx), beneath
+// every route, not just this one.
 
 export const Reception: React.FC = () => {
   const navigate = useNavigate();
@@ -186,7 +187,6 @@ export const Reception: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative font-ui p-24 bg-canvas overflow-hidden">
-      <WovenLocusField />
       <div className="text-center mb-36 relative z-10">
         <h1 className="font-display text-48 font-light text-ink-primary mb-8 tracking-tight">
           {APP_NAME}

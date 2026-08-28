@@ -450,7 +450,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="flex h-screen w-full overflow-hidden font-ui text-ink-primary bg-canvas">
+    // No bg-canvas here: WovenLocusField is mounted once at the app root
+    // (App.tsx, fixed, z-0) and would otherwise be painted over by this
+    // shell's own opaque background on every route but Reception.
+    <div className="flex h-screen w-full overflow-hidden font-ui text-ink-primary">
       {/* Desktop sidebar */}
       <aside
         className={`glass-bar hidden md:flex flex-col z-10 shrink-0 transition-all duration-150 ${
