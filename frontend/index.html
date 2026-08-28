@@ -42,10 +42,19 @@
                 soft: '#dcdce0',     // platinum soft
                 hover: '#a1a1a6',    // platinum hover
                 gold: '#b9975b'      // logo/Cream only — never a dark-UI fill
+              },
+              // Reserved for a genuinely serious handful of states: a
+              // decision that regressed, a data-residency violation, an
+              // audit-trail failure, an irreversible erase/delete action.
+              // Routine form and load errors elsewhere stay monochrome,
+              // marked with a squiggle instead of a color - founder call.
+              // Apple's systemRed (dark mode), same provenance as the rest
+              // of this palette borrowing from Apple's system grays.
+              danger: {
+                DEFAULT: '#ff453a',
+                soft: 'rgba(255,69,58,.14)',
+                border: 'rgba(255,69,58,.4)'
               }
-              // No red anywhere, on purpose — founder call. Genuinely bad
-              // news is said plainly in the text, not colored, same as
-              // everything else in this monochrome design.
             },
             fontFamily: {
               display: ['Fraunces', 'serif'],

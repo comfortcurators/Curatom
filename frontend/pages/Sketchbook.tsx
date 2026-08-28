@@ -144,7 +144,7 @@ export const Sketchbook: React.FC = () => {
       {loading ? (
         <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
       ) : error ? (
-        <div className="text-center py-32 text-accent text-13 font-prose">{error}</div>
+        <div className="text-center py-32 text-accent text-13 font-prose">~ {error} ~</div>
       ) : tab === 'mine' ? (
         mine.length === 0 ? (
           <div className="text-center py-32 text-ink-secondary text-13 font-prose">Nothing written yet.</div>

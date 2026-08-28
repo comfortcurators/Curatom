@@ -138,7 +138,7 @@ export const Memory: React.FC = () => {
                     <button
                       onClick={() => handleEraseSubjects(memory.metadata.subject_ids, memory.id)}
                       disabled={erasing === memory.id}
-                      className="flex items-center gap-4 px-8 py-4 bg-surface-200 hover:bg-accent/20 text-ink-secondary hover:text-accent rounded text-10 font-mono transition-colors"
+                      className="flex items-center gap-4 px-8 py-4 bg-surface-200 hover:bg-danger-soft text-ink-secondary hover:text-danger rounded text-10 font-mono transition-colors"
                       title="Execute Right-to-Erasure for every linked subject"
                     >
                       <Trash2 size={12} /> Erase {memory.metadata.subject_ids.length > 1 ? 'All Subjects' : 'Subject'}
@@ -150,7 +150,7 @@ export const Memory: React.FC = () => {
                   <button
                     onClick={() => handleDeleteMemory(memory.id, memory.topic)}
                     disabled={deleting === memory.id}
-                    className="flex items-center gap-4 px-8 py-4 bg-surface-200 hover:bg-accent/20 text-ink-secondary hover:text-accent rounded text-10 font-mono transition-colors"
+                    className="flex items-center gap-4 px-8 py-4 bg-surface-200 hover:bg-danger-soft text-ink-secondary hover:text-danger rounded text-10 font-mono transition-colors"
                     title="Delete this memory record outright"
                   >
                     <Trash2 size={12} /> Delete
