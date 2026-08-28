@@ -257,10 +257,11 @@ export const Team: React.FC = () => {
             </span>
             <span className="block text-12 text-ink-secondary font-prose mt-4 leading-relaxed">
               Tick this only if you think your data would actually be useful for making Curatom better. Unchecked by
-              default, nothing changes unless you opt in. Being straight about what this does right now: it records
-              your decision — nothing today reads this flag to anonymize, extract, or train on anything, because no
-              such pipeline exists yet. This is the honest, plain version of that toggle rather than one that claims
-              a mechanism that isn't built.
+              default, nothing changes unless you opt in. Being straight about what this does: from the moment you
+              tick it, every new memory you or your agents create also gets a de-identified copy stored separately —
+              content already PII-redacted, with no tenant, business, or memory identifier on the copy itself.
+              Nothing reads or trains on that corpus yet; it's collected, not yet used. Untick it and every copy your
+              account ever contributed is purged, not just future collection stopped.
             </span>
           </span>
         </label>

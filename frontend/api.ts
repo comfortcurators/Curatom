@@ -147,7 +147,7 @@ class ApiClient {
     });
   }
   setTrainingConsent(optIn: boolean) {
-    return this.request<{ tenant_id: string; training_data_opt_in: boolean }>('/tenants/training-consent', {
+    return this.request<{ tenant_id: string; training_data_opt_in: boolean; purged_corpus_entries: number }>('/tenants/training-consent', {
       method: 'PATCH',
       body: JSON.stringify({ opt_in: optIn })
     });
@@ -245,6 +245,7 @@ class ApiClient {
       purged_cache_entries: number;
       purged_recall_logs: number;
       purged_task_records: number;
+      purged_training_corpus_entries: number;
       verification_passed: boolean;
     }>(`/subjects/${encodeURIComponent(subjectId)}`, { method: 'DELETE' });
   }

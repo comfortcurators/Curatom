@@ -343,6 +343,7 @@ def test_subject_erasure_cascades_and_verifies_empty():
 
     mem_doc, cache_doc = _doc("mem_1"), _doc("cache_1")
     recall_doc, task_doc = _doc("recall_1"), _doc("task_1")
+    corpus_doc = _doc("corpus_1")
 
     seen = []
 
@@ -359,6 +360,8 @@ def test_subject_erasure_cascades_and_verifies_empty():
             return _Query([recall_doc] if nth == 1 else [])
         if name == "tasks":
             return _Query([task_doc] if nth == 1 else [])
+        if name == "training_corpus":
+            return _Query([corpus_doc] if nth == 1 else [])
         return _Query([])
 
     mock_db = MagicMock()
@@ -371,12 +374,93 @@ def test_subject_erasure_cascades_and_verifies_empty():
     assert result["purged_cache_entries"] == 1
     assert result["purged_recall_logs"] == 1
     assert result["purged_task_records"] == 1
+    assert result["purged_training_corpus_entries"] == 1
 
     # The receipt is only honest if the deletes actually happened.
     mem_doc.reference.delete.assert_awaited_once()
     cache_doc.reference.delete.assert_awaited_once()
     recall_doc.reference.delete.assert_awaited_once()
     task_doc.reference.delete.assert_awaited_once()
+    corpus_doc.reference.delete.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Training-corpus consent: opt-in writes a de-identified copy, opt-out
+# purges every copy the tenant ever contributed, not just future writes.
+# ---------------------------------------------------------------------------
+
+def test_training_corpus_entry_carries_no_direct_tenant_identifier_on_the_document():
+    import asyncio
+    from unittest.mock import MagicMock
+
+    repo = TenantScopedRepository("org_test", "tenant_test")
+    written = {}
+
+    class _DocRef:
+        def __init__(self, doc_id):
+            self.doc_id = doc_id
+
+        async def set(self, data):
+            written["data"] = data
+
+    class _Collection:
+        def document(self, doc_id):
+            return _DocRef(doc_id)
+
+    mock_db = MagicMock()
+    mock_db.collection = MagicMock(return_value=_Collection())
+
+    with patch.object(repo, "db", mock_db):
+        asyncio.run(repo.write_training_corpus_entry("mem_abc", {
+            "content_redacted": "some redacted content",
+            "topic": "t",
+            "region": "US",
+            "classification": "internal",
+            "pii_classes": [],
+            "created_at": "2026-01-01T00:00:00+00:00",
+        }))
+
+    data = written["data"]
+    assert data["content_redacted"] == "some redacted content"
+    assert "org_id" not in data
+    assert "tenant_id" not in data
+    # The linkage exists, but only inside source_ref - not at the top level
+    # where a naive read of the document would surface it.
+    assert data["source_ref"] == {"org_id": "org_test", "tenant_id": "tenant_test", "memory_id": "mem_abc"}
+
+
+def test_opting_out_purges_every_corpus_entry_for_the_tenant():
+    import asyncio
+    from unittest.mock import MagicMock
+
+    repo = TenantScopedRepository("org_test", "tenant_test")
+
+    def _doc(doc_id):
+        d = MagicMock()
+        d.id = doc_id
+        d.reference = AsyncMock()
+        return d
+
+    class _Query:
+        def __init__(self, docs):
+            self._docs = docs
+
+        def where(self, *args, **kwargs):
+            return self
+
+        async def get(self):
+            return self._docs
+
+    corpus_docs = [_doc("corpus_1"), _doc("corpus_2")]
+    mock_db = MagicMock()
+    mock_db.collection = MagicMock(return_value=_Query(corpus_docs))
+
+    with patch.object(repo, "db", mock_db):
+        purged = asyncio.run(repo.purge_training_corpus_for_tenant())
+
+    assert purged == 2
+    for d in corpus_docs:
+        d.reference.delete.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

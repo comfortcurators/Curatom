@@ -35,7 +35,7 @@ export const Memory: React.FC = () => {
     if (uniqueSubjectIds.length === 0) return;
 
     const subjectList = uniqueSubjectIds.join(', ');
-    if (!confirm(`Execute DSR Right-to-Erasure for all linked subjects (${subjectList})? This cascades to derived embeddings, recalls, tasks, and cached reshapes.`)) return;
+    if (!confirm(`Execute DSR Right-to-Erasure for all linked subjects (${subjectList})? This cascades to derived embeddings, recalls, tasks, cached reshapes, and any anonymized training-corpus copies.`)) return;
 
     setErasing(memoryId);
     try {
@@ -43,6 +43,7 @@ export const Memory: React.FC = () => {
       let purgedCacheEntries = 0;
       let purgedRecallLogs = 0;
       let purgedTaskRecords = 0;
+      let purgedCorpusEntries = 0;
 
       for (const subjectId of uniqueSubjectIds) {
         const result = await api.deleteSubject(subjectId);
@@ -53,12 +54,14 @@ export const Memory: React.FC = () => {
         purgedCacheEntries += result.purged_cache_entries;
         purgedRecallLogs += result.purged_recall_logs;
         purgedTaskRecords += result.purged_task_records;
+        purgedCorpusEntries += result.purged_training_corpus_entries;
       }
 
       alert(
         `Erasure complete for ${uniqueSubjectIds.length} subject(s): ` +
         `${deletedMemories} memories, ${purgedCacheEntries} cache entries, ` +
-        `${purgedRecallLogs} recall logs, and ${purgedTaskRecords} task records purged.`
+        `${purgedRecallLogs} recall logs, ${purgedTaskRecords} task records, ` +
+        `and ${purgedCorpusEntries} training-corpus entries purged.`
       );
       const data = await api.getMemories(search);
       setMemories(data.items);

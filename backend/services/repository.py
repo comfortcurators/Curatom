@@ -505,8 +505,49 @@ class TenantScopedRepository:
             .get()
         for c_doc in cache_docs:
             await c_doc.reference.delete()
+        await self._purge_training_corpus_for_memory(memory_id)
         await self.db.collection("memories").document(memory_id).delete()
         return True
+
+    # --- Training-data consent: an opt-in-only, anonymized copy ---
+    # A memory's content is already PII-redacted before it's ever stored
+    # (detect_and_redact_pii runs at write time regardless of this flag).
+    # For a tenant that has opted in, this writes a *second*, de-identified
+    # copy into its own collection: no org_id, no tenant_id, no memory id,
+    # nothing that traces back to a business or a person on the document
+    # itself. The only linkage back to the source memory lives in
+    # source_ref, and it exists purely so an erasure or an opt-out can find
+    # and purge the copy - no read/list/export route exposes source_ref or
+    # this collection at all, because nothing consumes this corpus yet.
+    async def write_training_corpus_entry(self, memory_id: str, entry: Dict[str, Any]) -> None:
+        corpus_id = f"corpus_{uuid.uuid4().hex}"
+        data = {
+            **entry,
+            "id": corpus_id,
+            "source_ref": {"org_id": self.org_id, "tenant_id": self.tenant_id, "memory_id": memory_id},
+        }
+        await self.db.collection("training_corpus").document(corpus_id).set(data)
+
+    async def _purge_training_corpus_for_memory(self, memory_id: str) -> int:
+        docs = await self.db.collection("training_corpus")\
+            .where("source_ref.org_id", "==", self.org_id)\
+            .where("source_ref.tenant_id", "==", self.tenant_id)\
+            .where("source_ref.memory_id", "==", memory_id)\
+            .get()
+        for d in docs:
+            await d.reference.delete()
+        return len(docs)
+
+    async def purge_training_corpus_for_tenant(self) -> int:
+        # Consent revoked: every anonymized copy this tenant ever
+        # contributed gets purged, not just future writes stopped.
+        docs = await self.db.collection("training_corpus")\
+            .where("source_ref.org_id", "==", self.org_id)\
+            .where("source_ref.tenant_id", "==", self.tenant_id)\
+            .get()
+        for d in docs:
+            await d.reference.delete()
+        return len(docs)
 
     # --- Sketchbooks ---
     # Every principal - human or agent - gets its own isolated notebook it
@@ -570,6 +611,7 @@ class TenantScopedRepository:
 
         deleted_mem_count = 0
         purged_cache_count = 0
+        purged_corpus_count = 0
         for m_doc in memories_docs:
             mem_id = m_doc.id
             cache_docs = await self.db.collection("cache")\
@@ -580,6 +622,7 @@ class TenantScopedRepository:
             for c_doc in cache_docs:
                 await c_doc.reference.delete()
                 purged_cache_count += 1
+            purged_corpus_count += await self._purge_training_corpus_for_memory(mem_id)
             await m_doc.reference.delete()
             deleted_mem_count += 1
 
@@ -627,6 +670,7 @@ class TenantScopedRepository:
             "purged_cache_entries": purged_cache_count,
             "purged_recall_logs": purged_recall_count,
             "purged_task_records": purged_task_count,
+            "purged_training_corpus_entries": purged_corpus_count,
             "verification_passed": verification_passed,
         }
 

@@ -706,24 +706,35 @@ class TrainingConsentPayload(BaseModel):
 
 @app.patch("/tenants/training-consent")
 async def set_training_consent(payload: TrainingConsentPayload, ctx: AuthContext = Depends(authorize("tenant.write"))):
-    # Stores a consent flag only. Nothing today reads this to anonymize or
-    # train on anything - there is no such pipeline built. This is the
-    # honest version of the feature: record the decision for real, don't
-    # claim a mechanism that doesn't exist yet.
+    # Toggling this on makes every future memory.write also drop a
+    # de-identified copy into training_corpus (see create_memory). Toggling
+    # it off purges every copy this tenant ever contributed, not just
+    # future ones - consent revoked means the data goes too, not just a
+    # promise to stop collecting more of it.
     if ctx.role != "Owner":
         raise HTTPException(403, detail="Only the Owner can change this")
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+
+    previous = await repo.get_tenant()
+    was_opted_in = bool(previous and previous.get("training_data_opt_in"))
+
     tenant = await repo.update_training_consent(payload.opt_in, decided_by=ctx.principal_id)
+
+    purged_count = 0
+    if was_opted_in and not payload.opt_in:
+        purged_count = await repo.purge_training_corpus_for_tenant()
+
     await repo.write_audit_log({
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "actor": ctx.principal_id,
         "action": "tenant.training_consent",
         "resource": f"tenants/{ctx.tenant_id}",
-        "details": {"opt_in": payload.opt_in},
+        "details": {"opt_in": payload.opt_in, "purged_corpus_entries": purged_count},
     })
     return {
         "tenant_id": tenant["tenant_id"],
         "training_data_opt_in": tenant.get("training_data_opt_in", False),
+        "purged_corpus_entries": purged_count,
     }
 
 @app.get("/fleets")
@@ -1326,6 +1337,22 @@ async def create_memory(
     }
     
     await repo.create_memory(mem_data)
+
+    # Opt-in only: check the tenant's training-consent flag and, only if
+    # true, write a de-identified copy alongside the real record. content_redacted
+    # is already PII-redacted above regardless of this flag - opting in adds
+    # a second, unlinked-on-its-face copy, it doesn't change what gets
+    # redacted from the original.
+    tenant = await repo.get_tenant()
+    if tenant and tenant.get("training_data_opt_in"):
+        await repo.write_training_corpus_entry(mem_id, {
+            "content_redacted": redacted_content,
+            "topic": mem.topic,
+            "region": mem.region,
+            "classification": mem.classification,
+            "pii_classes": pii_classes,
+            "created_at": now_iso,
+        })
 
     await repo.write_audit_log({
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
