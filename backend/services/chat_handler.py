@@ -28,7 +28,7 @@ _ANSWER_SCHEMA = {
 
 async def _generate_answer(prompt: str) -> tuple[str, bool]:
     resp = await ai.aio.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.5-flash',
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",

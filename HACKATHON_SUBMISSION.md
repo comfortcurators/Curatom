@@ -27,7 +27,7 @@ route layer and provable by test, not just documented.
   filtered by the requester's classification ceiling and permitted regions;
   missing or unknown security metadata **fails closed**, not open.
 - **Grounded recall**: retrieval is backed by Firestore vector search
-  (768-dim, `gemini-embedding-2`), so answers are traceable to a specific
+  (768-dim, `gemini-embedding-001`), so answers are traceable to a specific
   stored memory, not hallucinated from the model alone.
 - **Gemini 3.5 throughout**: every generation and embedding call — chat,
   task orchestration, directory ingestion — runs on Gemini 3.5-flash via

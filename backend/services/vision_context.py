@@ -61,7 +61,7 @@ async def extract_business_context_from_image(image_bytes: bytes, mime_type: str
 
     part = genai.types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
     resp = await ai.aio.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.5-flash",
         contents=[part, prompt],
     )
     raw = (resp.text or "").strip()

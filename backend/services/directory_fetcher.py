@@ -129,7 +129,7 @@ async def ingest_huggingface(max_pages: int = 5):
                 summary_prompt = f"Write a 1-sentence factual summary of this model card:\n{text[:1500]}"
                 async with gemini_sem:
                     summary_resp = await ai.aio.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.5-flash',
                         contents=summary_prompt
                     )
                 
@@ -169,7 +169,7 @@ async def ingest_closed_models():
     for m in models:
         async with gemini_sem:
             response = await ai.aio.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.5-flash',
                 contents=f"Find official documentation for the AI model {m}. Detail its verified context window, rate limits, and pricing tiers.",
                 config=types.GenerateContentConfig(
                     tools=[{"google_search": {}}]
@@ -189,7 +189,7 @@ async def ingest_closed_models():
             
         async with gemini_sem:
             cap_resp = await ai.aio.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.5-flash',
                 contents=f"Extract structured capabilities from this verified text: {text}",
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",

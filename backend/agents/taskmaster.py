@@ -24,7 +24,7 @@ Goal: {goal}
 Return JSON with plan_summary and steps, each with step_number, title, assigned_specialist, action, input_params.
 """
         resp = await ai.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash",
             contents=prompt,
             config=genai.types.GenerateContentConfig(response_mime_type="application/json"),
         )

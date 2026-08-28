@@ -254,7 +254,7 @@ async def agent_handshake(req: IdentifyRequest, request: Request):
 
     prompt = f"Derive the optimal agent operational profile based on this documentation:\n{context_text}"
     resp = await ai.aio.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.5-flash',
         contents=prompt,
         config=genai.types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -1074,7 +1074,7 @@ async def identify_atom(
 
     prompt = f"Derive the optimal agent operational profile based on this documentation:\n{context_text}"
     resp = await ai.aio.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.5-flash',
         contents=prompt,
         config=genai.types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -1346,7 +1346,7 @@ async def execute_recall(
     )
     
     resp = await ai.aio.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.5-flash',
         contents=prompt,
         config=genai.types.GenerateContentConfig(
             max_output_tokens=atom['profile']['max_output_tokens']

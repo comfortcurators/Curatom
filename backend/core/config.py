@@ -84,10 +84,20 @@ def build_genai_client():
     from google import genai
 
     if USE_VERTEX_AI:
+        # "global", not settings.LOCATION - gemini-3.5-flash returns 404
+        # ("not found or your project does not have access to it") on every
+        # regional Vertex AI endpoint checked (us-central1, us-east5,
+        # us-east1, europe-west4, us-west1); only the global endpoint serves
+        # it. Verified live against this project, including that
+        # gemini-embedding-001 also works correctly under "global" (768-dim
+        # output unchanged), so this is safe for every call this client
+        # makes, not just generation. settings.LOCATION stays a real region
+        # for Cloud Tasks (task_queue.py) - that's a separate concern, not
+        # coupled to where Gemini itself is reachable.
         return genai.Client(
             vertexai=True,
             project=settings.PROJECT_ID,
-            location=settings.LOCATION,
+            location="global",
         )
     return genai.Client(
         api_key=settings.API_KEY, http_options={"api_version": "v1beta1"}
