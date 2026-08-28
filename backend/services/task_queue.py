@@ -58,7 +58,13 @@ async def enqueue_ingestion_task() -> None:
                     "Content-Type": "application/json",
                 },
                 "body": base64.b64encode(b"{}").decode("utf-8"),
-            }
+            },
+            # Cloud Tasks' own default dispatch deadline is 600s - a second,
+            # independent ceiling from Cloud Run's request timeout (raised
+            # to 3600s for this service). Left at the default, Cloud Tasks
+            # would cut the connection at 10 minutes regardless of how long
+            # Cloud Run was willing to wait. 1800s is Cloud Tasks' own max.
+            "dispatchDeadline": "1800s",
         }
     }
 
