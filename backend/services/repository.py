@@ -320,6 +320,36 @@ class TenantScopedRepository:
         docs = await self.db.collection("policies").where("org_id", "==", self.org_id).where("tenant_id", "==", self.tenant_id).get()
         return [d.to_dict() for d in docs]
 
+    async def create_policy(self, name: str, effect: str, actions: List[str], principals: List[str]) -> Dict[str, Any]:
+        # PolicyEngine.evaluate (step 5) has read and evaluated stored
+        # policies since it was written - there was simply never a way to
+        # write one. The Policies page could only ever show "No custom
+        # policies added yet," forever, and the whole evaluation path for
+        # them was unreachable, not just unused.
+        policy_id = f"pol_{uuid.uuid4().hex}"
+        data = {
+            "policy_id": policy_id,
+            "name": name,
+            "effect": effect,
+            "actions": actions,
+            "principals": principals,
+            "org_id": self.org_id,
+            "tenant_id": self.tenant_id,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        await self.db.collection("policies").document(policy_id).set(data)
+        return data
+
+    async def delete_policy(self, policy_id: str) -> bool:
+        doc = await self.db.collection("policies").document(policy_id).get()
+        if not doc.exists:
+            return False
+        data = doc.to_dict()
+        if data.get("org_id") != self.org_id or data.get("tenant_id") != self.tenant_id:
+            return False
+        await self.db.collection("policies").document(policy_id).delete()
+        return True
+
     # --- Decision Log ---
     # A claim-backed choice, recorded at the time it's made, and the real
     # outcome tied back to it later - so the next similar choice has this

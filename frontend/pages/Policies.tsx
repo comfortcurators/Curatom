@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Play, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { ShieldCheck, Play, Loader2, CheckCircle2, XCircle, Plus, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { PolicyRule, PolicySimulationResult } from '../types';
 
 export const Policies: React.FC = () => {
   const [policies, setPolicies] = useState<PolicyRule[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [showForm, setShowForm] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newEffect, setNewEffect] = useState<'allow' | 'deny'>('deny');
+  const [newActions, setNewActions] = useState('');
+  const [newPrincipals, setNewPrincipals] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Simulator state
   const [simPrincipal, setSimPrincipal] = useState('Technical Reviewer');
@@ -14,19 +22,56 @@ export const Policies: React.FC = () => {
   const [simLoading, setSimLoading] = useState(false);
   const [simResult, setSimResult] = useState<PolicySimulationResult | null>(null);
 
+  const fetchPolicies = async () => {
+    try {
+      const data = await api.getPolicies();
+      setPolicies(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchPolicies = async () => {
-      try {
-        const data = await api.getPolicies();
-        setPolicies(data);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchPolicies();
   }, []);
+
+  const handleCreatePolicy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.createPolicy({
+        name: newName,
+        effect: newEffect,
+        actions: newActions.split(',').map((a) => a.trim()).filter(Boolean),
+        principals: newPrincipals.split(',').map((p) => p.trim()).filter(Boolean),
+      });
+      setNewName('');
+      setNewEffect('deny');
+      setNewActions('');
+      setNewPrincipals('');
+      setShowForm(false);
+      await fetchPolicies();
+    } catch (e: any) {
+      alert(`Could not add that policy: ${e.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePolicy = async (policyId: string) => {
+    if (!confirm('Remove this policy? Anything it was denying or allowing falls back to the baseline rules.')) return;
+    setDeletingId(policyId);
+    try {
+      await api.deletePolicy(policyId);
+      await fetchPolicies();
+    } catch (e: any) {
+      alert(`Could not remove that policy: ${e.message}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleSimulate = async () => {
     setSimLoading(true);
@@ -126,14 +171,80 @@ export const Policies: React.FC = () => {
 
         {/* Rules Table */}
         <div className="lg:col-span-2 space-y-16">
-          <h2 className="text-13 font-mono text-ink-secondary uppercase tracking-wider">Active Tenant Policies</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-13 font-mono text-ink-secondary uppercase tracking-wider">Active Tenant Policies</h2>
+            <button
+              onClick={() => setShowForm((s) => !s)}
+              className="flex items-center gap-6 px-10 py-5 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded text-11 font-mono transition-colors"
+            >
+              <Plus size={12} /> {showForm ? 'Close' : 'Add policy'}
+            </button>
+          </div>
+
+          {showForm && (
+            <form onSubmit={handleCreatePolicy} className="bg-surface-100 border border-surface-300 rounded-lg p-16 space-y-12">
+              <div>
+                <label className="block text-11 font-mono text-ink-secondary mb-6">Name</label>
+                <input
+                  className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary focus:border-accent outline-none font-prose"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. Block auditors from key rotation"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+                <div>
+                  <label className="block text-11 font-mono text-ink-secondary mb-6">Effect</label>
+                  <select
+                    className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-12 text-ink-primary font-mono outline-none"
+                    value={newEffect}
+                    onChange={(e) => setNewEffect(e.target.value as 'allow' | 'deny')}
+                  >
+                    <option value="deny">deny</option>
+                    <option value="allow">allow</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-11 font-mono text-ink-secondary mb-6">Actions (comma-separated)</label>
+                  <input
+                    className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-12 text-ink-primary font-mono outline-none"
+                    value={newActions}
+                    onChange={(e) => setNewActions(e.target.value)}
+                    placeholder="key.rotate, atom.create"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-11 font-mono text-ink-secondary mb-6">Principals (comma-separated role names, principal ids, or *)</label>
+                <input
+                  className="w-full bg-surface-200 border border-surface-400 rounded p-8 text-12 text-ink-primary font-mono outline-none"
+                  value={newPrincipals}
+                  onChange={(e) => setNewPrincipals(e.target.value)}
+                  placeholder="Auditor"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex items-center gap-8 px-14 py-8 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md transition-colors text-13 font-medium disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                Save policy
+              </button>
+            </form>
+          )}
+
           {loading ? (
             <div className="flex justify-center py-48 text-ink-secondary"><Loader2 className="animate-spin" size={24} /></div>
           ) : policies.length === 0 ? (
             <div className="text-center py-32 text-ink-secondary text-13 font-prose bg-surface-100 border border-surface-300 rounded-lg">
-              No custom policies added yet. The baseline rules — Owner has full access, roles get their standard
-              clearance, everything else is denied by default — are always on and don't need to be listed here.
-              Use the simulator to check what any role or principal can actually do.
+              No custom policies yet. The baseline rules — Owner has full access, roles get their standard
+              clearance, everything else is denied by default — are always on regardless. Add a policy above to
+              tighten or extend that for a specific role or principal, or use the simulator to check what already
+              applies without adding anything.
             </div>
           ) : (
             <div className="space-y-12">
@@ -144,11 +255,21 @@ export const Policies: React.FC = () => {
                       <span className="font-medium text-14 text-ink-primary">{p.name}</span>
                       <span className="text-11 font-mono text-ink-secondary ml-8">{p.policy_id}</span>
                     </div>
-                    <span className={`text-10 font-mono px-6 py-2 rounded uppercase ${
-                      p.effect === 'allow' ? 'bg-surface-300 text-ink-primary' : 'bg-accent/20 text-accent'
-                    }`}>
-                      {p.effect}
-                    </span>
+                    <div className="flex items-center gap-8">
+                      <span className={`text-10 font-mono px-6 py-2 rounded uppercase ${
+                        p.effect === 'allow' ? 'bg-surface-300 text-ink-primary' : 'bg-accent/20 text-accent'
+                      }`}>
+                        {p.effect}
+                      </span>
+                      <button
+                        onClick={() => handleDeletePolicy(p.policy_id)}
+                        disabled={deletingId === p.policy_id}
+                        className="text-ink-secondary hover:text-danger transition-colors p-4 rounded hover:bg-danger-soft disabled:opacity-40"
+                        title="Remove this policy"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-6 text-11 font-mono">
                     <span className="text-ink-secondary">Actions: {p.actions.join(', ')}</span>

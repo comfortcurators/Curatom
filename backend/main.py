@@ -41,7 +41,7 @@ from services.chat_handler import handle_chat
 from services.vision_context import extract_business_context_from_image
 from services.corpus_export import export_training_corpus_to_gcs
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from models.schemas import ChatRequest, IdentifyRequest, MemoryCreate
 
 logger = logging.getLogger(__name__)
@@ -1036,6 +1036,48 @@ async def identify_atom(
 async def list_policies(ctx: AuthContext = Depends(authorize("policy.read"))):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     return await repo.list_policies()
+
+class PolicyCreateSchema(BaseModel):
+    name: str
+    effect: str  # "allow" or "deny" - matched literally in PolicyEngine.evaluate
+    actions: List[str]  # e.g. ["memory.write"], or ["*"] for every action
+    principals: List[str]  # a role name, a principal_id, or "*"
+
+@app.post("/policies")
+async def create_policy(payload: PolicyCreateSchema, ctx: AuthContext = Depends(authorize("policy.write"))):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can add a custom policy")
+    if payload.effect not in ("allow", "deny"):
+        raise HTTPException(400, detail="effect must be 'allow' or 'deny'")
+    if not payload.actions or not payload.principals:
+        raise HTTPException(400, detail="actions and principals cannot be empty")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    policy = await repo.create_policy(payload.name, payload.effect, payload.actions, payload.principals)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "policy.create",
+        "resource": f"policies/{policy['policy_id']}",
+        "details": {"name": payload.name, "effect": payload.effect, "actions": payload.actions, "principals": payload.principals},
+    })
+    return policy
+
+@app.delete("/policies/{policy_id}")
+async def delete_policy(policy_id: str, ctx: AuthContext = Depends(authorize("policy.write"))):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can remove a custom policy")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    deleted = await repo.delete_policy(policy_id)
+    if not deleted:
+        raise HTTPException(404, detail=f"Policy '{policy_id}' not found")
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "policy.delete",
+        "resource": f"policies/{policy_id}",
+        "details": {},
+    })
+    return {"status": "deleted", "policy_id": policy_id}
 
 class PolicySimulateSchema(BaseModel):
     principal: str

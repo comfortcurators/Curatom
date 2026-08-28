@@ -213,6 +213,12 @@ class ApiClient {
 
   // Policies
   getPolicies() { return this.request<PolicyRule[]>('/policies'); }
+  createPolicy(data: { name: string; effect: string; actions: string[]; principals: string[] }) {
+    return this.request<PolicyRule>('/policies', { method: 'POST', body: JSON.stringify(data) });
+  }
+  deletePolicy(policyId: string) {
+    return this.request<{ status: string; policy_id: string }>(`/policies/${encodeURIComponent(policyId)}`, { method: 'DELETE' });
+  }
   simulatePolicy(principal: string, action: string, resource: string, context?: any) {
     return this.request<PolicySimulationResult>('/policies/simulate', {
       method: 'POST',
