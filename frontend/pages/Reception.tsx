@@ -4,6 +4,7 @@ import { Shield, Code, Eye, Briefcase, Cpu, ArrowRight, Loader2, FileSearch, Loc
 import { Role, AtomProfile } from '../types';
 import { APP_NAME, COMPANY_LEGAL_NAME } from '../constants';
 import { api } from '../api';
+import { WovenLocusField } from '../components/WovenLocusField';
 
 export const Reception: React.FC = () => {
   const navigate = useNavigate();
@@ -184,8 +185,9 @@ export const Reception: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center relative z-10 font-ui p-24 bg-canvas">
-      <div className="text-center mb-36">
+    <div className="min-h-screen flex flex-col items-center justify-center relative font-ui p-24 bg-canvas overflow-hidden">
+      <WovenLocusField />
+      <div className="text-center mb-36 relative z-10">
         <h1 className="font-display text-48 font-light text-ink-primary mb-8 tracking-tight">
           {APP_NAME}
         </h1>
@@ -194,7 +196,7 @@ export const Reception: React.FC = () => {
         </p>
       </div>
 
-      <div className="bg-surface-100 border border-surface-300 rounded-lg p-32 w-full max-w-xl shadow-2xl">
+      <div className="glass relative z-10 rounded-lg p-32 w-full max-w-xl">
         {mode === 'select' && (
           <div className="space-y-16">
             <h2 className="text-15 font-medium text-ink-primary mb-24 text-center font-display">
@@ -611,7 +613,7 @@ export const Reception: React.FC = () => {
         )}
       </div>
 
-      <div className="mt-36 text-11 text-ink-secondary font-mono opacity-50">
+      <div className="mt-36 text-11 text-ink-secondary font-mono opacity-50 relative z-10">
         Every sign-in is verified by the server — nothing your browser sends is trusted on its own.
       </div>
     </div>
