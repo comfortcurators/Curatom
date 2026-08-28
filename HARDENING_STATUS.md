@@ -46,8 +46,19 @@ candidate, but it is **not production-ready**.
 
 ## Still not production-ready
 
-1. **Identity:** demo auth is one environment-provisioned account, not an
-   external identity provider with provisioning, MFA, recovery, and revocation.
+1. **Identity:** this line previously said demo auth was one
+   environment-provisioned account, full stop - stale as of this write-up.
+   `POST /auth/register` is real, self-serve, rate-limited (5/min/IP), and
+   verified live against production: it creates a genuinely isolated tenant
+   and hands back a working session immediately, no founder involvement.
+   `POST /auth/recovery-code` / `/auth/recover` give an authenticated user a
+   real way to reset their own password. What's still missing, and is the
+   actual gap: no external identity provider (SSO/OIDC), no MFA, and
+   recovery is an in-app code rather than an emailed reset link - by design,
+   since email verification is best-effort and does not gate login
+   (`ZEPTOMAIL_TOKEN` unset means no email leaves the service, and
+   registration says so honestly rather than claiming otherwise). Session
+   revocation is JWT expiry only; there is no explicit sign-out-everywhere.
 2. **Durable tasks:** `/tasks` intentionally returns HTTP 501. Queueing,
    retries, idempotency, atomic transitions, dead-letter handling, and worker
    authentication are not implemented.

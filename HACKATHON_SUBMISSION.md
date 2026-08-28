@@ -60,15 +60,31 @@ separate hosting product, no cross-origin config, one URL.
 
 ## Live demo
 
-**https://curatom-backend-xoupwyyw3a-uc.a.run.app**
+**https://curatom.comfortcurators.io**
 
-Log in with the demo account (username `admin`) — credentials via
-Secret Manager, not published here.
+Register your own workspace directly — no invitation or provisioned
+credential needed. "Register Your Business" on the sign-in screen creates a
+genuinely isolated tenant and signs you in immediately as its Owner, with no
+data shared with any other business on Curatom. This is a real path, not a
+sandboxed demo mode: verified live end to end (register → login → an
+authenticated call against the new tenant's own business-context and agent-
+registry endpoints, both correctly empty for a brand-new workspace, not
+pre-seeded).
+
+A built-in demo account (username `admin`, full Owner access to a shared
+demo tenant) also exists if you'd rather explore than register your own —
+credentials via Secret Manager, not published here. Note its password can't
+be reset via the recovery-code flow (it isn't backed by a real Firestore
+user doc), so a mistyped demo password means asking for it again, not
+resetting it.
 
 ## What's honestly still a prototype
 
-We'd rather say this than have a judge find it: demo auth is a single
-provisioned account, not a full identity provider; the `/tasks` durable-queue
+We'd rather say this than have a judge find it: sign-up is real and
+self-serve (`POST /auth/register` creates a genuinely isolated tenant and
+hands back a working session, verified live) but there's no external
+identity provider (SSO/OIDC) or MFA yet, and password recovery is an in-app
+code rather than an emailed link; the `/tasks` durable-queue
 surface intentionally returns HTTP 501 (contract defined, not yet backed by a
 real queue); PII detection is a regex heuristic, not a trained classifier.
 Full list in `HARDENING_STATUS.md` in the repo. What *is* solid — tenant
