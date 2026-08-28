@@ -468,6 +468,10 @@ class TenantScopedRepository:
             "tenant_id": self.tenant_id,
             "created_at": (existing or {}).get("created_at", now_iso),
             "updated_at": now_iso,
+            # A monotonic counter, not a timestamp - an agent that cached
+            # last hour's greeting can compare integers to know it's stale
+            # without parsing or trusting clock skew between two ISO strings.
+            "version": (existing or {}).get("version", 0) + 1,
         }
         await self.db.collection("business_context").document(self._context_doc_id()).set(data)
         return data
@@ -844,3 +848,27 @@ class TenantScopedRepository:
         items = [d.to_dict() for d in docs[:limit]]
         next_cursor = docs[limit].id if len(docs) > limit else None
         return items, next_cursor
+
+    async def get_atom_activity(self, scan_limit: int = 1000) -> Dict[str, Dict[str, Any]]:
+        # No per-atom index exists on the audit collection (actor isn't a
+        # composite-indexed field), so this aggregates the tenant's most
+        # recent audit entries in Python rather than filtering server-side -
+        # honest about being a recency window, not the atom's full lifetime
+        # count, so it never claims more precision than it has.
+        docs = await self.db.collection("audit")\
+            .where("org_id", "==", self.org_id)\
+            .where("tenant_id", "==", self.tenant_id)\
+            .order_by("timestamp", direction=firestore.Query.DESCENDING)\
+            .limit(scan_limit)\
+            .get()
+        activity: Dict[str, Dict[str, Any]] = {}
+        for d in docs:
+            entry = d.to_dict()
+            actor = entry.get("actor")
+            if not actor or not actor.startswith("atom_"):
+                continue
+            bucket = activity.setdefault(actor, {"calls_in_window": 0, "last_call_at": None})
+            bucket["calls_in_window"] += 1
+            if bucket["last_call_at"] is None:
+                bucket["last_call_at"] = entry.get("timestamp")
+        return activity

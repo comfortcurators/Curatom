@@ -129,6 +129,9 @@ export interface Atom {
   status: AtomStatus;
   last_seen: string;
   created_at: string;
+  // Attached only in the human-facing /atoms response (see main.py) - a
+  // recency-window aggregate, not a lifetime count.
+  activity?: { calls_in_window: number; last_call_at: string | null };
 }
 
 export interface PolicyRule {
@@ -304,6 +307,7 @@ export interface BusinessContext {
   who_is_writing_and_reliability?: string;
   created_at?: string;
   updated_at?: string;
+  version?: number;
 }
 
 export interface AuditLogEntry {

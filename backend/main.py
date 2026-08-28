@@ -31,7 +31,7 @@ from core.security import (
     issue_email_verification_code,
     verify_email_code,
 )
-from services.mail_service import send_verification_email
+from services.mail_service import send_verification_email, send_email
 from core.rate_limiter import rate_limiter
 from services.repository import TenantScopedRepository, GlobalRepository
 from services.policy_engine import PolicyEngine, authorize
@@ -924,6 +924,17 @@ async def list_atoms(
             "resource": "atoms",
             "decision": "PERMITTED",
         })
+    elif items:
+        # Which key is actually being called, and which one hasn't been
+        # touched in a week, was previously invisible - agent count and
+        # last_seen (itself unfixed until now, see resolve_auth) were the
+        # only signals. Attached only for a human viewing the Registry -
+        # an agent enumerating its siblings doesn't need this. Skipped
+        # entirely on an empty list, so a tenant with no atoms never pays
+        # for an audit scan with nothing to attach it to.
+        activity = await repo.get_atom_activity()
+        for item in items:
+            item["activity"] = activity.get(item["id"], {"calls_in_window": 0, "last_call_at": None})
     return {"items": items, "next_cursor": next_cursor}
 
 class AtomTransitionSchema(BaseModel):
@@ -1757,7 +1768,14 @@ class BusinessContextPayload(BaseModel):
 async def get_business_context(ctx: AuthContext = Depends(authorize("context.read"))):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     context = await repo.get_business_context()
-    payload = {"onboarded": True, "context": context} if context else {"onboarded": False, "context": None}
+    # A monotonic counter an agent can compare against what it cached last
+    # time, without parsing or trusting two ISO timestamps against clock
+    # skew. Absent (not 0) when nothing has ever been written, so "never
+    # onboarded" and "onboarded at version 1" stay distinguishable.
+    payload = (
+        {"onboarded": True, "context": context, "context_version": context.get("version", 1)}
+        if context else {"onboarded": False, "context": None}
+    )
     # An agent landing on this endpoint for the first time got a bare field
     # dump - no indication of what Curatom even is, which key reached it, or
     # what it's allowed to do next. First version of this greeting was the
@@ -1864,6 +1882,25 @@ async def set_business_context(
             "resource": f"tenant/{ctx.tenant_id}/business_context",
             "details": {"approval_id": approval["id"]},
         })
+        # The response has said "The Owner has been notified" since this
+        # route existed, but nothing ever sent anything - the Owner only
+        # found out by opening the app. Best-effort, same discipline as
+        # verification email: a missing/unset ZEPTOMAIL_TOKEN or no
+        # registered tenant (the built-in demo account has none) never
+        # blocks the approval itself from queuing correctly.
+        tenant = await repo.get_tenant()
+        if tenant and tenant.get("contact_email"):
+            atom = await repo.get_atom(ctx.principal_id)
+            key_label = atom.get("name") if atom else ctx.principal_id
+            await send_email(
+                tenant["contact_email"],
+                tenant.get("name", "Owner"),
+                f"Curatom: '{key_label}' wants to update your White Paper",
+                f"<p>The agent key <strong>{key_label}</strong> submitted a change to your business "
+                f"context that needs your approval before it takes effect.</p>"
+                f"<p>Review and approve or deny it from the Team page in Curatom. "
+                f"Approval ID: <code>{approval['id']}</code></p>",
+            )
         return {
             "status": "pending_approval",
             "approval_id": approval["id"],
@@ -1895,6 +1932,55 @@ async def delete_business_context(ctx: AuthContext = Depends(authorize("context.
         "decision": "PERMITTED",
     })
     return {"onboarded": False, "context": None}
+
+
+@app.get("/context/history")
+async def get_business_context_history(ctx: AuthContext = Depends(authorize("context.write"))):
+    # set_business_context has snapshotted every superseded version into
+    # business_context_history since before this route existed - the
+    # snapshotting was real, nothing ever read it back. Owner-only, same
+    # gate as writing: a version history is exactly as sensitive as the
+    # document it's a history of.
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can view White Paper history")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    history = await repo.list_business_context_history()
+    current = await repo.get_business_context()
+    return {"current": current, "history": history}
+
+
+class ContextRestoreRequest(BaseModel):
+    superseded_at: str
+
+
+@app.post("/context/history/restore")
+async def restore_business_context(
+    payload: ContextRestoreRequest,
+    ctx: AuthContext = Depends(authorize("context.write")),
+):
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only the Owner can restore a past White Paper version")
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    history = await repo.list_business_context_history()
+    match = next((h for h in history if h.get("superseded_at") == payload.superseded_at), None)
+    if not match:
+        raise HTTPException(404, detail="No history entry found at that timestamp")
+
+    # Restoring is just another write - it goes through set_business_context
+    # like any other save, which means the version being replaced (whatever
+    # is live right now) gets its own history snapshot first. Nothing is
+    # ever discarded by a restore, including the state before the restore.
+    restore_fields = {k: v for k, v in match.items() if k in BusinessContextPayload.model_fields}
+    validated = BusinessContextPayload(**restore_fields)
+    saved = await repo.set_business_context(validated.model_dump())
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "context.restore",
+        "resource": f"tenant/{ctx.tenant_id}/business_context",
+        "details": {"restored_from": payload.superseded_at},
+    })
+    return {"onboarded": True, "context": saved}
 
 
 # --- Decision Log ---

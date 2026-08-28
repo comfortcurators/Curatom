@@ -257,7 +257,106 @@ export const Overview: React.FC = () => {
         )}
       </div>
 
+      {localStorage.getItem('curatom_role') === 'Owner' && <WhitePaperHistory onRestored={load} />}
+
       <BackupCode />
+    </div>
+  );
+};
+
+// The repository has snapshotted every superseded White Paper version
+// since before this existed - nothing ever surfaced it. A founder who
+// approves an agent's draft (replacing their own answers wholesale, as
+// happened live) had no way to see what changed or get a field back.
+// Owner-only: as sensitive as the document itself.
+const WhitePaperHistory: React.FC<{ onRestored: () => void }> = ({ onRestored }) => {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState<(BusinessContext & { superseded_at: string })[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.getBusinessContextHistory();
+      setEntries(res.history);
+    } catch (e: any) {
+      setError(e.message || 'Could not load version history.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && entries.length === 0) load();
+  };
+
+  const handleRestore = async (supersededAt: string) => {
+    if (!confirm('Restore this version? The version currently live will itself be saved to history first, so nothing is lost.')) return;
+    setRestoring(supersededAt);
+    try {
+      await api.restoreBusinessContext(supersededAt);
+      await load();
+      onRestored();
+    } catch (e: any) {
+      alert(`Could not restore: ${e.message}`);
+    } finally {
+      setRestoring(null);
+    }
+  };
+
+  return (
+    <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-24">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="flex w-full items-center justify-between text-15 text-ink-primary font-medium"
+      >
+        White Paper version history
+        <span className="text-12 text-ink-secondary font-mono">{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && (
+        <div className="mt-16 space-y-12">
+          {loading ? (
+            <div className="flex justify-center py-24"><Loader2 size={18} className="animate-spin text-ink-secondary" /></div>
+          ) : error ? (
+            <div className="text-13 text-accent font-prose">~ {error} ~</div>
+          ) : entries.length === 0 ? (
+            <p className="text-13 text-ink-secondary font-prose">
+              No earlier versions yet — this is the only one on record.
+            </p>
+          ) : (
+            entries.map((entry) => (
+              <div key={entry.superseded_at} className="bg-surface-200 border border-surface-400 rounded-md p-14 space-y-8">
+                <div className="flex items-center justify-between">
+                  <span className="text-11 font-mono text-ink-secondary">
+                    Replaced {new Date(entry.superseded_at).toLocaleString()}
+                    {entry.version ? ` · v${entry.version}` : ''}
+                  </span>
+                  <button
+                    onClick={() => handleRestore(entry.superseded_at)}
+                    disabled={restoring === entry.superseded_at}
+                    className="text-11 text-accent hover:underline disabled:opacity-50 flex items-center gap-4"
+                  >
+                    {restoring === entry.superseded_at ? <Loader2 size={11} className="animate-spin" /> : null}
+                    Restore this version
+                  </button>
+                </div>
+                <div className="text-12 text-ink-primary font-prose">
+                  <span className="text-ink-secondary">What you do:</span> {entry.what_you_do || '—'}
+                </div>
+                <div className="text-12 text-ink-primary font-prose">
+                  <span className="text-ink-secondary">Priorities:</span> {entry.priorities || '—'}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

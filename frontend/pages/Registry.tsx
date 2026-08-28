@@ -189,6 +189,7 @@ export const Registry: React.FC = () => {
                       ))}
                     </div>
                   </div>
+                  <ActivityRow lastSeen={atom.last_seen} activity={atom.activity} />
                 </div>
               </div>
 
@@ -285,5 +286,39 @@ export const Registry: React.FC = () => {
         </div>
       )}
     </>
+  );
+};
+
+const IDLE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Which key is expensive/idle was previously invisible - agent count and a
+// last_seen that never updated were all the Registry had. Activity is a
+// recency-window aggregate (see backend get_atom_activity), not a lifetime
+// count - said honestly rather than implying more precision than it has.
+const ActivityRow: React.FC<{ lastSeen: string; activity?: { calls_in_window: number; last_call_at: string | null } }> = ({
+  lastSeen,
+  activity,
+}) => {
+  const lastActiveAt = activity?.last_call_at || lastSeen;
+  const lastActiveMs = lastActiveAt ? new Date(lastActiveAt).getTime() : NaN;
+  const isIdle = !Number.isNaN(lastActiveMs) && Date.now() - lastActiveMs > IDLE_THRESHOLD_MS;
+  const relativeLabel = Number.isNaN(lastActiveMs)
+    ? 'never called'
+    : (() => {
+        const days = Math.floor((Date.now() - lastActiveMs) / (24 * 60 * 60 * 1000));
+        if (days <= 0) return 'active today';
+        if (days === 1) return 'active 1 day ago';
+        return `active ${days} days ago`;
+      })();
+
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-ink-secondary">Activity:</span>
+      <span className={`text-10 px-6 py-2 rounded font-mono ${isIdle ? 'bg-accent/20 text-accent' : 'bg-surface-300 text-ink-primary'}`}>
+        {activity ? `${activity.calls_in_window} recent calls · ` : ''}
+        {relativeLabel}
+        {isIdle ? ' · idle' : ''}
+      </span>
+    </div>
   );
 };

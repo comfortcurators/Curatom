@@ -308,6 +308,19 @@ class ApiClient {
     });
   }
 
+  getBusinessContextHistory() {
+    return this.request<{ current: BusinessContext | null; history: (BusinessContext & { superseded_at: string })[] }>(
+      '/context/history'
+    );
+  }
+
+  restoreBusinessContext(supersededAt: string) {
+    return this.request<{ onboarded: boolean; context: BusinessContext }>('/context/history/restore', {
+      method: 'POST',
+      body: JSON.stringify({ superseded_at: supersededAt }),
+    });
+  }
+
   async extractContextFromImage(file: File) {
     // Not this.request(): that always forces Content-Type: application/json,
     // which would strip the multipart boundary the browser sets for

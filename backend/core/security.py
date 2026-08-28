@@ -374,6 +374,14 @@ async def resolve_auth(
         if not is_valid:
             raise HTTPException(status_code=401, detail={"code": "invalid_credentials", "message": "Invalid agent API key credentials"})
 
+        # last_seen was set once at registration and never touched again -
+        # every atom looked "active as of creation" forever, so a founder
+        # had no real way to tell an idle key from one calling in daily.
+        # Updated on every authenticated call, not just specific routes.
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        await db.collection("atoms").document(atom_id).update({"last_seen": now_iso})
+        atom["last_seen"] = now_iso
+
         profile = atom.get("profile", {})
         return AuthContext(
             principal_id=atom["id"],
