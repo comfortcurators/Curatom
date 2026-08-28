@@ -137,6 +137,8 @@ export const Registry: React.FC = () => {
         <RegisterAtomForm title="Add another agent key" onConnected={fetchAtoms} />
       )}
 
+      {!loading && atoms.length > 0 && <UsageByModelFamily atoms={atoms} />}
+
       {loading ? (
         <div className="flex justify-center py-48 text-ink-secondary">
           <Loader2 className="animate-spin" size={24} />
@@ -286,6 +288,61 @@ export const Registry: React.FC = () => {
         </div>
       )}
     </>
+  );
+};
+
+// Grouped from what /atoms already returns per key - no separate endpoint,
+// no invented cost or accuracy figures (Curatom doesn't meter token cost or
+// measure accuracy, so a real ROI number can't exist yet). This is real
+// usage volume by model family, computed client-side from the same
+// recency-window activity data the per-key rows already show.
+const UsageByModelFamily: React.FC<{ atoms: Atom[] }> = ({ atoms }) => {
+  const byFamily = new Map<string, { agents: number; calls: number; lastCallAt: string | null }>();
+  for (const atom of atoms) {
+    const family = atom.model_family || 'Other';
+    const bucket = byFamily.get(family) || { agents: 0, calls: 0, lastCallAt: null };
+    bucket.agents += 1;
+    bucket.calls += atom.activity?.calls_in_window ?? 0;
+    const candidate = atom.activity?.last_call_at || atom.last_seen;
+    if (candidate && (!bucket.lastCallAt || new Date(candidate) > new Date(bucket.lastCallAt))) {
+      bucket.lastCallAt = candidate;
+    }
+    byFamily.set(family, bucket);
+  }
+  const rows = Array.from(byFamily.entries()).sort((a, b) => b[1].calls - a[1].calls);
+
+  return (
+    <div className="bg-surface-100 border border-surface-300 rounded-lg p-20">
+      <h2 className="text-13 font-medium text-ink-primary mb-4">Usage by model family</h2>
+      <p className="text-11 text-ink-secondary font-prose mb-16">
+        Real call volume from your connected keys, grouped by the model family each was registered with — not a cost
+        or accuracy estimate, since Curatom doesn't meter either yet.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-12">
+          <thead>
+            <tr className="text-left text-11 font-mono text-ink-secondary uppercase tracking-wider border-b border-surface-300">
+              <th className="pb-8 pr-16">Model family</th>
+              <th className="pb-8 pr-16">Agents</th>
+              <th className="pb-8 pr-16">Recent calls</th>
+              <th className="pb-8">Last active</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([family, stats]) => (
+              <tr key={family} className="border-b border-surface-300/60 last:border-0">
+                <td className="py-8 pr-16 text-ink-primary font-medium">{family}</td>
+                <td className="py-8 pr-16 text-ink-secondary font-mono">{stats.agents}</td>
+                <td className="py-8 pr-16 text-ink-secondary font-mono">{stats.calls}</td>
+                <td className="py-8 text-ink-secondary font-mono">
+                  {stats.lastCallAt ? new Date(stats.lastCallAt).toLocaleDateString() : 'never'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 };
 
