@@ -1,9 +1,49 @@
-from google import genai
+import json
+from google.genai import types
 from core.config import build_genai_client
 from services.directory_fetcher import embed_text
 from services.repository import GlobalRepository, TenantScopedRepository
 
 ai = build_genai_client()
+
+_ANSWER_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "answer": {"type": "STRING"},
+        # Live-verified defect: a purely business-context question (nothing
+        # in the answer touched model documentation) still cited two
+        # unrelated model_directory excerpts as if they were evidence for
+        # it - vector search always returns its "k nearest," regardless of
+        # how distant or irrelevant they actually are, and cosine distance
+        # alone isn't a safe filter here (a genuinely on-topic query
+        # measured 0.41, a genuinely unrelated one measured 0.52 against
+        # this embedding model - too close to threshold reliably). Asking
+        # the model that actually wrote the answer whether it used the
+        # supplementary docs is a real signal, not a guessed number.
+        "used_supplementary_documentation": {"type": "BOOLEAN"},
+    },
+    "required": ["answer", "used_supplementary_documentation"],
+}
+
+
+async def _generate_answer(prompt: str) -> tuple[str, bool]:
+    resp = await ai.aio.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=_ANSWER_SCHEMA,
+        ),
+    )
+    try:
+        parsed = json.loads(resp.text)
+        return parsed["answer"], bool(parsed.get("used_supplementary_documentation"))
+    except Exception:
+        # Same fail-open-on-the-side-of-caution as directory_fetcher's own
+        # structured-extraction fallback: if parsing fails, still answer
+        # with the raw text, but never claim sources were used that we
+        # have no confirmation of.
+        return resp.text, False
 
 async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_id: str):
     query_emb = await embed_text(query)
@@ -17,6 +57,7 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
     # unqualified as sources for a business answer they had no part in
     # would be its own quiet fabrication.
     sources = []
+    technical_sources = []
     seen_sources = set()
     directory_text = ""
     for d in dir_results:
@@ -28,7 +69,7 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
             entry = (d['source_url'], d.get('section_title', 'Source'))
             if entry not in seen_sources:
                 seen_sources.add(entry)
-                sources.append({"uri": entry[0], "title": f"Technical documentation: {entry[1]}"})
+                technical_sources.append({"uri": entry[0], "title": f"Technical documentation: {entry[1]}"})
         if d.get('text'):
             directory_text += d['text'] + "\n"
 
@@ -64,18 +105,23 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
         business_name = "this business"
         business_context_text = "(No business context has been provided yet - the founder has not answered Curatom's onboarding questions.)"
 
+    base_prompt = (
+        f"You are answering on behalf of '{business_name}'. Use the business context below as the "
+        f"authoritative source for anything about the business itself. Only fall back to the "
+        f"supplementary technical documentation for questions about how a specific AI model or tool works. "
+        f"Report honestly whether your answer actually drew on the supplementary technical documentation - "
+        f"say no if it didn't inform the answer at all, even if it was present below.\n\n"
+        f"Business context:\n{business_context_text}\n\n"
+        f"Supplementary technical documentation:\n{directory_text}\n\n"
+        f"Query: {query}"
+    )
+
     if atom_key:
-        prompt = (
-            f"You are answering on behalf of '{business_name}'. Use the business context below as the "
-            f"authoritative source for anything about the business itself. Only fall back to the "
-            f"supplementary technical documentation for questions about how a specific AI model or tool works.\n\n"
-            f"Business context:\n{business_context_text}\n\n"
-            f"Supplementary technical documentation:\n{directory_text}\n\n"
-            f"Query: {query}"
-        )
-        resp = await ai.aio.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+        answer, used_technical_docs = await _generate_answer(base_prompt)
+        if used_technical_docs:
+            sources.extend(technical_sources)
         return {
-            "text": resp.text,
+            "text": answer,
             "is_stale": False,
             "sources": sources
         }
@@ -86,21 +132,12 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
             {"label": "Simulate Policy Permissions", "action": "NAVIGATE", "target": "/policies"}
         ]
 
-        prompt = (
-            f"You are answering on behalf of '{business_name}'. Use the business context below as the "
-            f"authoritative source for anything about the business itself. Only fall back to the "
-            f"supplementary technical documentation for questions about how a specific AI model or tool works.\n\n"
-            f"Business context:\n{business_context_text}\n\n"
-            f"Supplementary technical documentation:\n{directory_text}\n\n"
-            f"Query: {query}"
-        )
-        resp = await ai.aio.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
+        answer, used_technical_docs = await _generate_answer(base_prompt)
+        if used_technical_docs:
+            sources.extend(technical_sources)
 
         return {
-            "text": resp.text,
+            "text": answer,
             "options": options,
             "sources": sources
         }
