@@ -428,8 +428,9 @@ export const Team: React.FC = () => {
         <div className="p-16 border-b border-surface-300">
           <h2 className="text-14 text-ink-primary font-medium">Everyone and everything with access</h2>
           <p className="text-11 text-ink-secondary font-prose mt-2">
-            People and AI agent keys, together — an agent's "key name" is what identifies it, same as a person's
-            username. Manage an agent's key itself (rotate, retire, state) from Atom Registry.
+            Every principal that can act here is an atom, organic or inorganic — a person's key name is their
+            username, an agent's is its atom id. Manage an agent's key itself (rotate, retire, state) from Atom
+            Registry.
           </p>
         </div>
         {loading || atomsLoading ? (
@@ -449,6 +450,9 @@ export const Team: React.FC = () => {
                     <div>
                       <div className="text-13 text-ink-primary font-medium flex items-center gap-6">
                         {u.display_name}
+                        <span className="text-9 font-mono text-ink-secondary bg-surface-300 px-6 py-1 rounded uppercase tracking-wider">
+                          Organic
+                        </span>
                         {u.email_verified === false && (
                           <span className="text-10 font-mono text-accent bg-accent/10 px-6 py-1 rounded uppercase">Email unverified</span>
                         )}
@@ -478,7 +482,12 @@ export const Team: React.FC = () => {
                 <div className="flex items-center gap-10 min-w-0">
                   <Cpu size={16} className="text-accent shrink-0" />
                   <div className="min-w-0">
-                    <div className="text-13 text-ink-primary font-medium truncate">{a.name}</div>
+                    <div className="text-13 text-ink-primary font-medium flex items-center gap-6 truncate">
+                      {a.name}
+                      <span className="text-9 font-mono text-accent bg-accent/10 px-6 py-1 rounded uppercase tracking-wider shrink-0">
+                        Inorganic
+                      </span>
+                    </div>
                     <div className="text-11 text-ink-secondary font-mono truncate">
                       {a.id} · {a.model_family}
                     </div>
