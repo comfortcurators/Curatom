@@ -22,6 +22,19 @@ class Settings(BaseSettings):
 
     INGESTION_PAGES_LIMIT: int = 5
     GEMINI_CONCURRENCY_LIMIT: int = 10
+    # Shared secret Cloud Tasks presents when it calls back into
+    # /directory/ingest/execute. That route runs the real ingestion work
+    # synchronously inside a genuine incoming request, which is the actual
+    # fix for the fire-and-forget-under-cpuIdle problem documented in
+    # directory_fetcher.py - not a public route, so it needs its own gate
+    # independent of user auth (Cloud Tasks isn't a logged-in user).
+    INGESTION_TASK_SECRET: str = os.getenv("INGESTION_TASK_SECRET", "")
+    # This service's own public URL, so it can hand Cloud Tasks a target to
+    # call back into. Cloud Run doesn't expose this to the container at
+    # runtime, so it's set once as a plain env var rather than guessed from
+    # incoming request headers, which a proxy could spoof.
+    SERVICE_BASE_URL: str = os.getenv("SERVICE_BASE_URL", "")
+    INGESTION_TASKS_QUEUE: str = os.getenv("INGESTION_TASKS_QUEUE", "directory-ingestion")
 
 settings = Settings()
 

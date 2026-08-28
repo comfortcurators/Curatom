@@ -36,6 +36,7 @@ from core.rate_limiter import rate_limiter
 from services.repository import TenantScopedRepository, GlobalRepository
 from services.policy_engine import PolicyEngine, authorize
 from services.directory_fetcher import run_ingestion, embed_text, is_ingestion_stale
+from services.task_queue import enqueue_ingestion_task
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
 from services.chat_handler import handle_chat
 from services.vision_context import extract_business_context_from_image
@@ -61,13 +62,21 @@ def _memory_is_visible_to(ctx: AuthContext, memory: Dict[str, Any]) -> bool:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async def _bootstrap_ingestion() -> None:
+        # Used to await run_ingestion() directly inside this fire-and-forget
+        # startup task - the same problem as the old /directory/ingest
+        # handler, and arguably worse here: a fresh container has no
+        # guarantee anyone will hit it with traffic afterward to keep
+        # nudging a throttled background task forward. Enqueuing is a
+        # single quick network call, safe to actually run to completion
+        # inside this short-lived task; the real ingestion work happens
+        # later as its own genuine request via /directory/ingest/execute.
         try:
             state = await GlobalRepository().get_ingestion_state()
             if not state.get("completed") and not state.get("is_ingesting"):
-                await run_ingestion()
+                await enqueue_ingestion_task()
             elif is_ingestion_stale(state):
                 logger.warning("Ingestion state was stuck at is_ingesting=True past the staleness threshold - retrying")
-                await run_ingestion()
+                await enqueue_ingestion_task()
         except Exception:
             logger.exception("Directory ingestion failed during startup")
 
@@ -1568,7 +1577,13 @@ async def trigger_ingest(ctx: AuthContext = Depends(authorize("directory.ingest"
     if state.get("is_ingesting") and not is_ingestion_stale(state):
         raise HTTPException(409, detail="Ingestion already in progress")
 
-    asyncio.create_task(run_ingestion())
+    # Was asyncio.create_task(run_ingestion()) - fire-and-forget inside this
+    # handler, which only kept making progress while some other request
+    # happened to be in flight on the same instance (Cloud Run throttles
+    # CPU between requests). Cloud Tasks calling back into
+    # /directory/ingest/execute makes the actual work a real incoming
+    # request instead, which gets full CPU for its own duration regardless.
+    await enqueue_ingestion_task()
 
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     await repo.write_audit_log({
@@ -1580,6 +1595,26 @@ async def trigger_ingest(ctx: AuthContext = Depends(authorize("directory.ingest"
     })
 
     return {"status": "Ingestion initiated"}
+
+
+@app.post("/directory/ingest/execute")
+async def execute_ingest_task(request: Request):
+    # Called only by Cloud Tasks, never a logged-in principal - there is no
+    # AuthContext here, so the gate is this shared secret instead of the
+    # usual authorize(). Cloud Run's own invoker policy is public on this
+    # service (verified live: allUsers holds run.invoker), so this route
+    # has to defend itself rather than lean on platform-level auth.
+    provided = request.headers.get("X-Ingestion-Task-Secret", "")
+    if not settings.INGESTION_TASK_SECRET or provided != settings.INGESTION_TASK_SECRET:
+        raise HTTPException(403, detail="Not a recognized ingestion task caller")
+
+    # Awaited directly, inside this real incoming request, rather than
+    # asyncio.create_task() - that's the entire fix. Cloud Run's request
+    # timeout (raised to 3600s for this service) is the ceiling on a single
+    # run now, not "however long CPU happens to be un-throttled for."
+    await run_ingestion()
+    return {"status": "completed"}
+
 
 # --- Observability Feed ---
 @app.get("/logs")

@@ -32,6 +32,11 @@ ALLOWED_UNGATED_PATHS = {
     # or write tenant-scoped data - registration (which does) still
     # requires a human operator session via /atoms/register.
     "/", "/llms.txt", "/v1/capabilities", "/v1/reception/agents/handshake",
+    # Called only by Cloud Tasks, never a logged-in principal - there is no
+    # user session to check with authorize()/resolve_auth(). Gated inside
+    # the handler instead, against the INGESTION_TASK_SECRET shared with
+    # the Cloud Tasks callback (see services/task_queue.py).
+    "/directory/ingest/execute",
 }
 
 # /metrics is gated on "who you are" (any authenticated principal, scoped to

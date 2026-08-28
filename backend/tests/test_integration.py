@@ -105,6 +105,20 @@ def test_tasks_are_explicitly_disabled_for_authenticated_owner():
     assert response.json()["detail"]["code"] == "not_implemented"
 
 
+def test_ingest_execute_rejects_missing_or_wrong_secret():
+    # Only Cloud Tasks should ever reach this route successfully - no user
+    # session backs it, so a wrong or absent secret must refuse outright
+    # rather than fall through to running ingestion for free.
+    response = client.post("/directory/ingest/execute")
+    assert response.status_code == 403
+
+    response = client.post(
+        "/directory/ingest/execute",
+        headers={"X-Ingestion-Task-Secret": "definitely-not-it"},
+    )
+    assert response.status_code == 403
+
+
 def test_classification_validation_returns_422_before_backend_write():
     token = _owner_token()
     with _without_stored_policies():
