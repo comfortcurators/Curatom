@@ -168,6 +168,10 @@ Shipped after rv0.2.0's initial release, real and live:
   to.
 - **Per-key activity tracking** — `last_seen` updates on every authenticated
   agent call (previously set once at registration and never touched again).
+- **Woven Locus background** — a pointer/touch-reactive canvas field, ported
+  to full design parity with the Host and SuperhostOS marketing sites and
+  mounted once at the app root, so it renders behind every route rather than
+  only the Reception sign-in screen it started on.
 
 ## Data ethics
 
