@@ -67,17 +67,23 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
           <h2 className="text-15 text-ink-primary font-medium">{name} is connected</h2>
         </div>
         <p className="text-13 text-ink-secondary font-prose">
-          Give it this key — it's shown once and can't be retrieved again. Anywhere that key is used can now read
+          Give it this — it's shown once and can't be retrieved again. Anywhere that key is used can now read
           your White Paper and act within its permissions.
           {requiresApproval && (
             <> Every write it attempts is queued, not executed — approve or deny each one from the Team page before it takes effect.</>
           )}
         </p>
         <div className="flex items-center gap-8 bg-surface-200 border border-surface-400 rounded-md p-12">
-          <code className="flex-1 text-12 font-mono text-ink-primary break-all">{apiKey}</code>
+          {/* Was just the bare key string - an agent (or whoever's setting
+              one up) still had to know the endpoint and header name from
+              memory or docs elsewhere. This is copy-paste runnable as-is. */}
+          <pre className="flex-1 text-12 font-mono text-ink-primary whitespace-pre-wrap break-all">
+{`GET ${window.location.origin}/context
+Header: X-Atom-Key: ${apiKey}`}
+          </pre>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(apiKey);
+              navigator.clipboard.writeText(`GET ${window.location.origin}/context\nHeader: X-Atom-Key: ${apiKey}`);
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
             }}

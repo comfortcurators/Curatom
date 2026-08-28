@@ -70,8 +70,10 @@ export const Registry: React.FC = () => {
 
   const handleCopyKey = async () => {
     if (!rotatedKey) return;
+    // Copy-paste runnable, not just the bare key - same as connect time.
+    const snippet = `GET ${window.location.origin}/context\nHeader: X-Atom-Key: ${rotatedKey.value}`;
     try {
-      await navigator.clipboard.writeText(rotatedKey.value);
+      await navigator.clipboard.writeText(snippet);
       setCopied(true);
     } catch {
       alert('Clipboard access was denied. Copy the key from a secure browser context.');
