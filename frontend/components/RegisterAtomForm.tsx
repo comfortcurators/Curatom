@@ -68,7 +68,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
         </div>
         <p className="text-13 text-ink-secondary font-prose">
           Give it this key — it's shown once and can't be retrieved again. Anywhere that key is used can now read
-          your business context and act within its permissions.
+          your White Paper and act within its permissions.
           {requiresApproval && (
             <> Every write it attempts is queued, not executed — approve or deny each one from the Team page before it takes effect.</>
           )}

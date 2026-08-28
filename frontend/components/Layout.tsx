@@ -66,7 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'business',
     label: 'Business',
     icon: Building2,
-    items: [{ path: '/sketchbook', icon: NotebookPen, label: 'Sketchbooks' }],
+    items: [{ path: '/sketchbook', icon: NotebookPen, label: 'Notepad' }],
   },
   {
     id: 'team',
@@ -245,7 +245,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       <div className="px-16 py-12 border-b border-surface-300 bg-surface-200/50">
         <label className="text-10 font-mono text-ink-secondary uppercase tracking-wider block mb-4 flex items-center gap-4">
-          <Building2 size={12} /> Bound Tenant Scope
+          <Building2 size={12} /> Workspace
         </label>
         <div className="text-12 text-ink-primary truncate font-prose" title={tenantId}>
           {tenantName || tenantId}
@@ -488,7 +488,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="hidden sm:flex items-center gap-16 text-11 font-mono text-ink-secondary shrink-0">
             <span className="flex items-center gap-4 bg-surface-200 px-8 py-3 rounded border border-surface-300">
               <Globe size={12} className="text-accent" />
-              <span>Tenant policy controls active</span>
+              <span>{tenantName || 'Workspace name not set'}</span>
             </span>
           </div>
         </header>

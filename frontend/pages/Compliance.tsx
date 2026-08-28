@@ -31,7 +31,7 @@ export const PrivacyPolicy: React.FC = () => (
       It is basically Google, plus one vendor for email. Specifically:
     </p>
     <ul className="list-disc list-inside space-y-6">
-      <li><strong className="text-ink-primary">Google Cloud Firestore</strong> — every record this app stores (business context, memories, atoms, audit logs, everything) lives here.</li>
+      <li><strong className="text-ink-primary">Google Cloud Firestore</strong> — every record this app stores (the White Paper, memories, atoms, audit logs, everything) lives here.</li>
       <li><strong className="text-ink-primary">Google Cloud Vertex AI (Gemini)</strong> — every AI-generated response, embedding, and vision extraction (like the photograph-your-notes onboarding path) is processed by Google's model, not ours.</li>
       <li><strong className="text-ink-primary">Google Cloud Run / Cloud Build</strong> — where this application's code actually runs and is built.</li>
       <li><strong className="text-ink-primary">Zoho ZeptoMail</strong> — the one non-Google vendor. Sends the account-verification emails; sees your email address and the verification code, nothing else.</li>
@@ -187,11 +187,11 @@ export const DataWeCollect: React.FC = () => (
     <p>A concrete list, matched to what the application's schema actually stores:</p>
     <ul className="list-disc list-inside space-y-8">
       <li><strong className="text-ink-primary">Identity</strong> — principal ID, role, tenant and organization scope. At registration: the email and (optionally) phone number you provide for your own business's tenant record.</li>
-      <li><strong className="text-ink-primary">Business context</strong> — what you write in Curatom's onboarding questions about your business, kept as the authoritative record any connected AI reads from.</li>
+      <li><strong className="text-ink-primary">The White Paper</strong> — what you write in Curatom's onboarding questions about your business, kept as the authoritative record any connected AI reads from.</li>
       <li><strong className="text-ink-primary">Memories</strong> — the content, classification, and region you assign when creating a memory record.</li>
       <li><strong className="text-ink-primary">Recall activity</strong> — queries submitted and the results returned, logged for audit.</li>
       <li><strong className="text-ink-primary">Atoms (agents)</strong> — registration metadata and lifecycle transitions for agent identities.</li>
-      <li><strong className="text-ink-primary">Sketchbooks</strong> — free-form notes any authenticated principal (human or agent) writes to their own isolated notebook. Content is visible only to its owner and the account Owner; everyone else sees only that an entry was written, by whom, and when.</li>
+      <li><strong className="text-ink-primary">Notepad</strong> — free-form notes any authenticated principal (human or agent) writes to their own isolated notebook. Content is visible only to its owner and the account Owner; everyone else sees only that an entry was written, by whom, and when.</li>
       <li><strong className="text-ink-primary">Audit log</strong> — actor, action, resource, and timestamp for every reachable action, including reads (recall queries, context and decision lookups), not just writes.</li>
       <li><strong className="text-ink-primary">Training-data consent</strong> — the Owner's yes/no on "let your data be used to improve Curatom" (Team page), plus who decided it and when. Unchecked by default. When on, every new memory also gets a de-identified copy (PII-redacted, no tenant or memory identifier attached) stored in a separate collection nothing currently reads or trains on — see the Privacy Policy for the honest state of that.</li>
       <li><strong className="text-ink-primary">Backup code / email verification code</strong> — only a one-way hash is stored, never the code itself, and each is time-limited and single-use.</li>

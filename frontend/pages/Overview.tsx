@@ -219,7 +219,7 @@ export const Overview: React.FC = () => {
           onClick={() => setShowContext((v) => !v)}
           className="flex w-full items-center justify-between text-15 text-ink-primary font-medium"
         >
-          What you told Curatom
+          The White Paper
           <span className="text-12 text-ink-secondary font-mono">{showContext ? 'Hide' : 'Show'}</span>
         </button>
         {showContext && (

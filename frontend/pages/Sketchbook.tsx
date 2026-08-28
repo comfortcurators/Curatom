@@ -47,7 +47,7 @@ export const Sketchbook: React.FC = () => {
       }
       setError(null);
     } catch (e: any) {
-      setError(e.message || 'Could not load the sketchbook.');
+      setError(e.message || 'Could not load the notepad.');
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export const Sketchbook: React.FC = () => {
       setContent('');
       await load();
     } catch (e: any) {
-      alert(`Could not write to your sketchbook: ${e.message}`);
+      alert(`Could not write to your notepad: ${e.message}`);
     } finally {
       setSaving(false);
     }
@@ -76,11 +76,11 @@ export const Sketchbook: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-24">
       <div>
         <h1 className="font-display text-24 text-ink-primary flex items-center gap-10">
-          <NotebookPen size={22} className="text-accent" /> Sketchbooks
+          <NotebookPen size={22} className="text-accent" /> Notepad
         </h1>
         <p className="text-13 text-ink-secondary mt-4 font-prose">
-          Every key — yours or an agent's — gets its own notebook, free to write whatever it wants, no approval
-          gate. Isolated from every other sketchbook except yours, which sees all of them. Every stroke is audited.
+          Every key — yours or an agent's — gets its own notepad, free to write whatever it wants, no approval
+          gate. Isolated from every other notepad except yours, which sees all of them. Every entry is audited.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export const Sketchbook: React.FC = () => {
             tab === 'mine' ? 'bg-surface-400 text-ink-primary' : 'text-ink-secondary hover:text-ink-primary'
           }`}
         >
-          <NotebookPen size={13} /> Your Sketchbook
+          <NotebookPen size={13} /> Your Notepad
         </button>
         {isOwner && (
           <button
@@ -100,7 +100,7 @@ export const Sketchbook: React.FC = () => {
               tab === 'all' ? 'bg-surface-400 text-ink-primary' : 'text-ink-secondary hover:text-ink-primary'
             }`}
           >
-            <Eye size={13} /> All Sketchbooks
+            <Eye size={13} /> All Notepads
           </button>
         )}
         <button
@@ -153,7 +153,7 @@ export const Sketchbook: React.FC = () => {
         )
       ) : tab === 'all' ? (
         all.length === 0 ? (
-          <div className="text-center py-32 text-ink-secondary text-13 font-prose">No sketchbook has anything in it yet.</div>
+          <div className="text-center py-32 text-ink-secondary text-13 font-prose">No notepad has anything in it yet.</div>
         ) : (
           <div className="space-y-12">{all.map((e) => <EntryCard key={e.id} entry={e} showOwner />)}</div>
         )

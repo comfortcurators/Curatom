@@ -173,7 +173,7 @@ const QUESTIONS: Question[] = [
 const buildPremadePrompt = (): string => {
   const lines = QUESTIONS.map((q) => `${q.key}: ""  # ${q.label.replace(/\s*\(optional\)$/, '')}`);
   return [
-    '# Curatom business context — fill in what you can verify, leave the rest blank.',
+    "# Curatom's White Paper — fill in what you can verify, leave the rest blank.",
     '# Kindly provide factual data you can verify; else leave blank.',
     '# Fields like countries_covered or key_associations can list more than one value',
     '# in the same string — as many times, locations, and at whatever scale applies.',
@@ -307,11 +307,12 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-24">
       <div>
-        <h1 className="font-display text-28 text-ink-primary">Tell Curatom about your business</h1>
+        <h1 className="font-display text-28 text-ink-primary">Your White Paper</h1>
         <p className="text-14 text-ink-secondary mt-6 font-prose leading-relaxed">
           No pre-filled demo data, no jargon to wade through — just answer these in your own words. Once you save,
-          this is what every AI agent connected to Curatom checks before it acts on your behalf, so you only have
-          to explain your business once instead of re-explaining it to every LLM you talk to.
+          this is the authoritative record every AI agent connected to Curatom checks before it acts on your
+          behalf, so you only have to explain your business once instead of re-explaining it to every LLM you talk
+          to.
         </p>
       </div>
 

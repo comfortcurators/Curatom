@@ -149,7 +149,7 @@ export const Team: React.FC = () => {
   const describeApproval = (a: PendingApproval): string => {
     switch (a.action) {
       case 'context.write':
-        return 'wants to update your business context';
+        return 'wants to update your White Paper';
       case 'decision.write':
         return `wants to log a decision: "${a.payload.claim || ''}"`;
       case 'memory.write':
