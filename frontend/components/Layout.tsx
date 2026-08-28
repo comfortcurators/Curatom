@@ -391,7 +391,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               key={item.path}
               to={item.path}
               title={item.label}
-              className={`flex items-center justify-center w-36 h-36 rounded-md transition-colors duration-150 ${
+              className={`flex items-center justify-center w-[40px] h-[40px] rounded-md transition-colors duration-150 ${
                 isActive ? 'bg-surface-300 text-accent' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
               }`}
             >
@@ -411,7 +411,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 key={group.id}
                 to={item.path}
                 title={item.label}
-                className={`flex items-center justify-center w-36 h-36 rounded-md transition-colors duration-150 ${
+                className={`flex items-center justify-center w-[40px] h-[40px] rounded-md transition-colors duration-150 ${
                   isActive ? 'bg-surface-300 text-accent' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
                 }`}
               >
@@ -428,7 +428,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 toggleSidebarCollapsed();
               }}
               title={`${group.label} — expand sidebar`}
-              className={`flex items-center justify-center w-36 h-36 rounded-md transition-colors duration-150 ${
+              className={`flex items-center justify-center w-[40px] h-[40px] rounded-md transition-colors duration-150 ${
                 isGroupActive ? 'text-accent' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
               }`}
             >
@@ -454,7 +454,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Desktop sidebar */}
       <aside
         className={`glass-bar hidden md:flex flex-col z-10 shrink-0 transition-all duration-150 ${
-          sidebarCollapsed ? 'w-56' : 'w-64'
+          sidebarCollapsed ? 'w-[72px]' : 'w-64'
         }`}
         style={{ borderTop: 'none', borderLeft: 'none', borderBottom: 'none', borderRight: '1px solid var(--glass-border)' }}
       >
