@@ -3,6 +3,8 @@ import { Loader2, Plug, Copy, Check, CheckCircle2 } from 'lucide-react';
 import { api } from '../api';
 
 const MODEL_FAMILIES = ['Claude', 'GPT', 'Gemini', 'Other'];
+const ALL_REGIONS = ['IN', 'EU', 'UK', 'CN', 'US', 'SG', 'AU'];
+const DEFAULT_REGIONS = ['SG', 'US', 'IN', 'EU'];
 
 interface Props {
   title?: string;
@@ -17,6 +19,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
   const [name, setName] = useState('');
   const [modelFamily, setModelFamily] = useState('Claude');
   const [requiresApproval, setRequiresApproval] = useState(false);
+  const [regions, setRegions] = useState<string[]>(DEFAULT_REGIONS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -24,6 +27,10 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (regions.length === 0) {
+      setError('Pick at least one permitted region — a key with none could never read anything.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -32,6 +39,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
         model_family: modelFamily,
         description: `Connected from ${title}.`,
         requires_approval: requiresApproval,
+        profile: { permitted_regions: regions },
       });
       setApiKey(res.api_key);
       onConnected?.();
@@ -46,6 +54,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
     setName('');
     setModelFamily('Claude');
     setRequiresApproval(false);
+    setRegions(DEFAULT_REGIONS);
     setApiKey(null);
     setError(null);
   };
@@ -119,6 +128,37 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
             ))}
           </select>
         </div>
+      </div>
+      <div>
+        <label className="block text-11 font-mono text-ink-secondary mb-6">
+          Permitted regions — where this key is allowed to read data from
+        </label>
+        <div className="flex flex-wrap gap-8">
+          {ALL_REGIONS.map((r) => {
+            const checked = regions.includes(r);
+            return (
+              <label
+                key={r}
+                className={`flex items-center gap-6 px-10 py-6 rounded-md border cursor-pointer text-12 font-mono ${
+                  checked ? 'border-accent text-accent bg-surface-200' : 'border-surface-400 text-ink-secondary bg-surface-200'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) =>
+                    setRegions((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))
+                  }
+                  className="sr-only"
+                />
+                {r}
+              </label>
+            );
+          })}
+        </div>
+        <p className="text-11 text-ink-secondary font-prose mt-6">
+          A request from this key for data outside these regions is refused, not just logged.
+        </p>
       </div>
       <label className="flex items-start gap-8 p-10 rounded-md border border-surface-400 bg-surface-200 cursor-pointer">
         <input

@@ -962,7 +962,19 @@ async def rotate_atom_key(
     atom = await repo.get_atom(atom_id)
     if not atom:
         raise HTTPException(404, "Atom not found")
-        
+
+    # The frontend only enables this button for an 'active' atom - but that
+    # was cosmetic only. Nothing here checked status, so a direct call
+    # against a retired (or suspended/quarantined/draining) atom minted a
+    # fresh, fully working key for a credential that was supposed to be
+    # permanently decommissioned. Found live: rotating a retired atom's key
+    # returned 200 with a usable new key.
+    if atom.get("status") != "active":
+        raise HTTPException(409, detail={
+            "code": "atom_not_active",
+            "message": f"Cannot rotate a key for an atom in '{atom.get('status')}' state. Only an active atom's key can be rotated.",
+        })
+
     new_key = f"{atom_id}.{uuid.uuid4().hex}"
     new_hash = hash_key(new_key)
     
