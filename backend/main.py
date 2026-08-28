@@ -769,6 +769,16 @@ async def list_fleets(
 ):
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     items, next_cursor = await repo.list_fleets(limit=limit, cursor_id=cursor)
+    # Stored (and every other collection in this app) keys its primary id
+    # as "id" - but the frontend's Fleet type, and every call site using
+    # it (Fleets.tsx's api.getFleetHealth(f.fleet_id) chief among them),
+    # has always expected "fleet_id". That made f.fleet_id undefined,
+    # api.getFleetHealth(undefined) 404, and the whole health panel
+    # (Active Atoms, Error Rate, Status, Default Inherited Profile) fail
+    # silently for every fleet, every tenant, always - console.error only.
+    # Aliasing here instead of renaming the stored field, which every
+    # other document type in this app also calls "id".
+    items = [{**item, "fleet_id": item.get("id")} for item in items]
     return {"items": items, "next_cursor": next_cursor}
 
 @app.get("/fleets/{fleet_id}/health")

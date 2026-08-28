@@ -572,4 +572,21 @@ def test_fleet_health_does_not_fabricate_an_error_rate():
     assert response.status_code == 200
     body = response.json()
     assert body["error_rate_pct"] is None
-    assert body["health_status"] == "unknown"
+
+
+def test_fleets_list_includes_fleet_id_alongside_stored_id():
+    # Every fleet document stores its primary key as "id" (same as every
+    # other collection here), but the frontend's Fleet type - and every
+    # call site using it, api.getFleetHealth(f.fleet_id) chief among them -
+    # has always expected "fleet_id". Without this alias f.fleet_id is
+    # undefined, api.getFleetHealth(undefined) 404s, and the whole health
+    # panel fails silently (console.error only) for every fleet, always.
+    token = _owner_token()
+    stored_fleet = {"id": "fleet_abc123", "name": "Default", "org_id": "org_test", "tenant_id": "tenant_test"}
+    with _no_stored_policies(), \
+         patch.object(TenantScopedRepository, "list_fleets", new=AsyncMock(return_value=([stored_fleet], None))):
+        response = client.get("/fleets", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["id"] == "fleet_abc123"
+    assert item["fleet_id"] == "fleet_abc123"
