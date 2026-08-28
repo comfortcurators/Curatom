@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, ExternalLink, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { api } from '../api';
 import { DirectoryEntry, DirectoryStatus } from '../types';
+import { PlainExplain } from '../components/PlainExplain';
 
 export const Directory: React.FC = () => {
   const [entries, setEntries] = useState<DirectoryEntry[]>([]);
@@ -49,6 +50,12 @@ export const Directory: React.FC = () => {
           <p className="text-13 text-ink-secondary mt-4 font-prose">
             Global third-party documentation excerpts ingested once and queried to ground adaptive reshaping.
           </p>
+          <PlainExplain>
+            A library of real documentation about the AI models your agents might use (Claude, GPT, Gemini, and
+            others) — synced from the vendors themselves, not guessed. When you ask Curatom something about how a
+            specific model works, it checks this library first instead of making something up. Shared across every
+            account, not specific to your business.
+          </PlainExplain>
         </div>
         <button
           onClick={handleIngest}

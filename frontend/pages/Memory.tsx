@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Database, Search, Tag, Loader2, ShieldAlert, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { Memory as MemoryType } from '../types';
+import { PlainExplain } from '../components/PlainExplain';
 
 export const Memory: React.FC = () => {
   const [memories, setMemories] = useState<MemoryType[]>([]);
@@ -90,10 +91,16 @@ export const Memory: React.FC = () => {
     <div className="space-y-24">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-16">
         <div>
-          <h1 className="font-display text-24 text-ink-primary">Tenant Memory Store</h1>
+          <h1 className="font-display text-24 text-ink-primary">Memory Bank</h1>
           <p className="text-13 text-ink-secondary mt-4 font-prose">
             Vector-indexed memories with dual PII redaction, subject linkage, and residency tagging.
           </p>
+          <PlainExplain>
+            Every fact your AI agents have stored and can recall later — like a shared filing cabinet. Each record
+            carries its own rules for who's allowed to read it: how sensitive it is, which region it's tagged to,
+            and how long before it's considered too old to trust. Personal information is automatically stripped
+            out before anything is stored.
+          </PlainExplain>
         </div>
         <div className="relative w-full md:w-64">
           <Search size={15} className="absolute left-12 top-1/2 -translate-y-1/2 text-ink-secondary" />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TerminalSquare, Play, Loader2, Database, XCircle } from 'lucide-react';
 import { api } from '../api';
 import { Atom, Memory } from '../types';
+import { PlainExplain } from '../components/PlainExplain';
 
 export const Playground: React.FC = () => {
   const [atoms, setAtoms] = useState<Atom[]>([]);
@@ -66,6 +67,12 @@ export const Playground: React.FC = () => {
           Execute a real recall against an agent and a memory record you've actually created — the Atom Registry and
           Memory Bank sections create those. There's no seeded demo data here anymore.
         </p>
+        <PlainExplain>
+          A test bench: pick one of your agent keys and one memory record, ask a question, and see exactly what
+          happens — including a real refusal if that agent isn't allowed to see that record (wrong region, or too
+          sensitive for its clearance). Useful for checking your setup actually enforces what you think it does,
+          before an agent finds out for you.
+        </PlainExplain>
       </div>
 
       {atoms.length === 0 || memories.length === 0 ? (

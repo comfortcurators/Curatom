@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layers, Activity, AlertCircle, Shield, CheckCircle2, Loader2, Play } from 'lucide-react';
 import { api } from '../api';
 import { Fleet } from '../types';
+import { PlainExplain } from '../components/PlainExplain';
 
 export const Fleets: React.FC = () => {
   const [fleets, setFleets] = useState<Fleet[]>([]);
@@ -45,6 +46,12 @@ export const Fleets: React.FC = () => {
         <p className="text-13 text-ink-secondary mt-4 font-prose">
           Cohort-level configuration, residency boundaries, and lifecycle control across agent cohorts.
         </p>
+        <PlainExplain>
+          A "fleet" is just a group of your connected AI agents that share the same default settings — which
+          regions their data can come from, how long they trust old information, how much detail they're allowed
+          to see. Most accounts only ever have one fleet, created automatically the first time you connect an
+          agent. This page shows that group's health and lets you change its shared settings.
+        </PlainExplain>
       </div>
 
       {loading ? (

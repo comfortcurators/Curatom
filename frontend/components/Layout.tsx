@@ -91,9 +91,9 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'jargon',
-    label: 'Jargon',
+    label: 'Technical',
     icon: Wrench,
-    description: "The long technical detail — for an AI agent or a developer, not really for you.",
+    description: "The detail an AI agent or a developer works with directly. Each page has a plain-English explanation if you want it — look for \"What does this mean?\"",
     items: [
       { path: '/chat', icon: MessageSquare, label: 'Fleet Control Plane' },
       { path: '/fleets', icon: Layers, label: 'Fleet Topology' },

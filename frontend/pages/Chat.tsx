@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Send, Loader2, TerminalSquare, ExternalLink, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
 import { api } from '../api';
 import { ChatMessage } from '../types';
+import { PlainExplain } from '../components/PlainExplain';
 
 export const Chat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -65,6 +66,13 @@ export const Chat: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-surface-100 border border-surface-300 rounded-lg overflow-hidden">
+      <div className="px-24 pt-20">
+        <PlainExplain>
+          A chat window straight into Curatom, no dashboard clicks in between. Ask it anything in plain English —
+          it answers using your White Paper and whatever documentation it has, and tells you honestly when it
+          doesn't know something instead of guessing.
+        </PlainExplain>
+      </div>
       <div className="flex-1 overflow-y-auto p-24 space-y-20">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>

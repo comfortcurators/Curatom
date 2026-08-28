@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Play, Loader2, CheckCircle2, XCircle, Plus, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { PolicyRule, PolicySimulationResult } from '../types';
+import { PlainExplain } from '../components/PlainExplain';
 
 export const Policies: React.FC = () => {
   const [policies, setPolicies] = useState<PolicyRule[]>([]);
@@ -93,6 +94,12 @@ export const Policies: React.FC = () => {
         <p className="text-13 text-ink-secondary mt-4 font-prose">
           ABAC rules evaluated on every operation. Default is Deny. Deny rules take strict precedence.
         </p>
+        <PlainExplain>
+          These are the rules for who — a person or an AI agent — is allowed to do what. Nothing is allowed by
+          default; something only works if a rule explicitly permits it, and a "deny" rule always wins over an
+          "allow" one, even a more specific one. The simulator below lets you test "what would happen if" before
+          it happens for real, and you can add your own custom rules (e.g. "never let this agent delete anything").
+        </PlainExplain>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-24">
