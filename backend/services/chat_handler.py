@@ -17,10 +17,18 @@ async def handle_chat(query: str, role: str, atom_key: str, tenant_id: str, org_
     # unqualified as sources for a business answer they had no part in
     # would be its own quiet fabrication.
     sources = []
+    seen_sources = set()
     directory_text = ""
     for d in dir_results:
         if d.get('source_url'):
-            sources.append({"uri": d['source_url'], "title": f"Technical documentation: {d.get('section_title', 'Source')}"})
+            # Found live: vector search can surface the same excerpt twice
+            # for one query, and nothing deduped it - the same source_url
+            # and title landed in the citations list twice, presented as
+            # if it were two pieces of corroborating evidence.
+            entry = (d['source_url'], d.get('section_title', 'Source'))
+            if entry not in seen_sources:
+                seen_sources.add(entry)
+                sources.append({"uri": entry[0], "title": f"Technical documentation: {entry[1]}"})
         if d.get('text'):
             directory_text += d['text'] + "\n"
 
