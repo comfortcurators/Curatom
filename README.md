@@ -67,17 +67,22 @@ Set secrets out of band. Do not commit `.env` files.
 
 ```bash
 export PROJECT_ID="your-gcp-project"
-export API_KEY="<provider-key>"
 export JWT_SECRET="$(openssl rand -base64 48)"
 export DEMO_USERNAME="admin"
 export DEMO_PASSWORD="$(openssl rand -base64 32)"
 export FRONTEND_URL_PRODUCTION="https://your-frontend.example"
 ```
 
-The backend exits during startup when `PROJECT_ID` or `API_KEY` is absent, or
-when `JWT_SECRET` is shorter than 32 characters. Human demo authentication also
+The backend exits during startup when `PROJECT_ID` is absent, or when
+`JWT_SECRET` is shorter than 32 characters. Human demo authentication also
 fails closed when `DEMO_PASSWORD` is absent. `DEMO_PASSWORD` is a
 controlled-evaluation stub, not a production identity system.
+
+`API_KEY` is **optional**, not required — leaving it unset is the intended
+path inside Google Cloud: the backend authenticates to Gemini via Vertex AI
+using the runtime service account's Application Default Credentials, so a
+Cloud Run deployment needs zero Gemini secrets. Set `API_KEY` only to force
+the Developer API instead (e.g. for local dev outside Google Cloud).
 
 When deployed behind a proxy, the proxy must overwrite (not merely preserve)
 `X-Forwarded-For`, because login throttling uses its first address. Directly
@@ -120,6 +125,49 @@ pytest -q
 
 Firestore/vector integration checks require the emulator or a controlled GCP
 staging project with the included indexes applied.
+
+## Production deploy
+
+Live at `curatom.comfortcurators.io`, one Cloud Run service
+(`curatom-backend`) serving both the built frontend and the API — no separate
+frontend hosting. No CI: build and deploy by hand.
+
+```bash
+export PROJECT_ID="your-gcp-project"
+./deploy.sh
+```
+
+`deploy.sh` is idempotent — it enables required APIs, creates the runtime
+service account with `roles/datastore.user` and `roles/aiplatform.user` only
+(never broader), stores `JWT_SECRET`/`DEMO_PASSWORD` in Secret Manager on
+first run and preserves them on every rerun, deploys Firestore rules/indexes
+if the `firebase` CLI is available, and builds+deploys the Cloud Run service
+from source. Re-running it after a code change redeploys; it does not
+regenerate secrets that already exist.
+
+Before deploying a change to `service/schema.sql`-equivalent Firestore state,
+note there are no Firestore migrations — index changes need
+`firebase deploy --only firestore:indexes` run explicitly (`deploy.sh` does
+this only when `firebase` is installed).
+
+## Recent capabilities (not yet reflected above)
+
+Shipped after rv0.2.0's initial release, real and live:
+
+- **Usage by model family** (Registry page) — real call-volume aggregation
+  per connected key's `model_family`, computed from actual audit-log
+  activity. No cost or accuracy figures — Curatom doesn't meter either yet,
+  so none are invented.
+- **White Paper version history and rollback** (`/context/history`,
+  `/context/history/restore`) — every prior version was already being
+  snapshotted on write; this exposes and makes it restorable, Owner-only.
+- **`context_version`** on `GET /context` — a monotonic integer so an agent
+  can detect a stale cached answer without comparing timestamps.
+- **Real approval-email notification** — an approval-gated agent key's queued
+  write now actually emails the tenant's registered contact, not just claims
+  to.
+- **Per-key activity tracking** — `last_seen` updates on every authenticated
+  agent call (previously set once at registration and never touched again).
 
 ## Data ethics
 
