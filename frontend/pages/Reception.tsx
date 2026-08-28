@@ -159,7 +159,12 @@ export const Reception: React.FC = () => {
     try {
       const res = await api.registerAtom({
         name: agentName,
-        fleet_id: 'fleet_core_apac',
+        // No fleet_id: a hardcoded "fleet_core_apac" here 404'd for every
+        // real tenant, since fleets are auto-created per-tenant with a
+        // real generated id (see get_or_create_default_fleet in
+        // repository.py), never that literal string. Omitting it lets the
+        // backend assign the tenant's actual default fleet, same as the
+        // Overview quick-start form already does correctly.
         model_family: agentHint || 'inferred',
         role: 'Requester',
         description: 'Auto-registered via Reception Agent Handshake',
