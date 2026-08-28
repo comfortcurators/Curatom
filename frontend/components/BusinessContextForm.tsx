@@ -279,7 +279,15 @@ export const BusinessContextForm: React.FC<Props> = ({ initial, onSaved }) => {
     setSaving(true);
     setError(null);
     try {
-      const res = await api.setBusinessContext(values as BusinessContext);
+      // Only what this form actually owns - `values` also carries whatever
+      // metadata (org_id, tenant_id, created_at, updated_at) rode in on
+      // `initial` when editing an existing context. The backend silently
+      // discards unknown fields, so this was harmless, but there's no
+      // reason for a form to send fields it doesn't ask about or use.
+      const payload = Object.fromEntries(
+        QUESTIONS.map((q) => [q.key, values[q.key] ?? '']).filter(([, v]) => v !== '')
+      ) as BusinessContext;
+      const res = await api.setBusinessContext(payload);
       onSaved(res.context);
     } catch (e: any) {
       setError(e.message || 'Could not save — try again in a moment.');
