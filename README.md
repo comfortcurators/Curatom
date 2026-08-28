@@ -213,6 +213,7 @@ sufficient rights, but no commercial license is granted by this repository
 itself, and the project should not be described as already dual-licensed
 unless and until one has actually been granted. See `LICENSE`, `LICENSING.md`,
 and `NOTICE`. Citation metadata for Zenodo and GitHub is in `CITATION.cff`.
+rv0.2.0 is archived on Zenodo: [10.5281/zenodo.22112980](https://doi.org/10.5281/zenodo.22112980).
 
 Curatom Enterprise is independent software. Google Gemini, Google Cloud
 Firestore, FastAPI, React, and all other third-party names, trademarks, and

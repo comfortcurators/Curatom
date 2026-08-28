@@ -4,6 +4,11 @@ title: "Curatom Enterprise — Staging Candidate: A Tenant-Scoped Agent Registry
 type: software
 version: 0.2.0
 date-released: 2026-08-26
+doi: 10.5281/zenodo.22112980
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22112980
+    description: Zenodo archive of Curatom rv0.2.0
 authors:
   - name: "Comfort Curators Private Limited"
 license: AGPL-3.0-only
