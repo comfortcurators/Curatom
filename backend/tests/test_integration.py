@@ -552,3 +552,24 @@ def test_technical_reviewer_still_cannot_write():
             headers={"Authorization": f"Bearer {token}"},
         )
     assert response.json()["allowed"] is False
+
+
+# ---------------------------------------------------------------------------
+# Fleet health used to hardcode error_rate_pct to 0.0 - a confident-looking
+# real percentage next to an honestly-labeled "unknown" health_status, with
+# no actual error tracking behind it (a recall failure like a residency
+# denial raises before any log is ever written, so there's nothing to
+# compute a rate from). null until that data source exists.
+# ---------------------------------------------------------------------------
+
+def test_fleet_health_does_not_fabricate_an_error_rate():
+    token = _owner_token()
+    fleet = {"fleet_id": "fleet_test", "org_id": "org_test", "tenant_id": "tenant_test"}
+    with _no_stored_policies(), \
+         patch.object(TenantScopedRepository, "get_fleet", new=AsyncMock(return_value=fleet)), \
+         patch.object(TenantScopedRepository, "list_atoms", new=AsyncMock(return_value=([], None))):
+        response = client.get("/fleets/fleet_test/health", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["error_rate_pct"] is None
+    assert body["health_status"] == "unknown"

@@ -105,7 +105,13 @@ export const Fleets: React.FC = () => {
                   </div>
                   <div className="bg-surface-200 p-16 rounded border border-surface-300">
                     <span className="text-11 text-ink-secondary block font-mono">Error Rate</span>
-                    <span className="text-20 font-display text-ink-primary mt-4 block">{health.error_rate_pct}%</span>
+                    <span className="text-20 font-display text-ink-primary mt-4 block">
+                      {health.error_rate_pct === null || health.error_rate_pct === undefined ? (
+                        <span className="text-13 text-ink-secondary font-prose">Not yet tracked</span>
+                      ) : (
+                        `${health.error_rate_pct}%`
+                      )}
+                    </span>
                   </div>
                   <div className="bg-surface-200 p-16 rounded border border-surface-300">
                     <span className="text-11 text-ink-secondary block font-mono">Status</span>

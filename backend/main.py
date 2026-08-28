@@ -786,7 +786,14 @@ async def get_fleet_health(
         "fleet_id": fleet_id,
         "total_atoms": len(fleet_atoms),
         "health_status": "unknown",
-        "error_rate_pct": 0.0
+        # Was a hardcoded 0.0 - a real-looking "0%" next to "unknown" status
+        # was the exact fabricated-metric pattern this app's own business
+        # context comment warns against elsewhere: recall failures (e.g. a
+        # residency denial) raise before any log is written, so there is no
+        # real error-tracking data source yet to compute this from. null
+        # until that exists; the frontend already has to handle it since
+        # health_status is honestly "unknown" too.
+        "error_rate_pct": None
     }
 
 # --- Atoms Registry ---
