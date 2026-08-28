@@ -23,6 +23,8 @@ import {
   ScrollText,
   NotebookPen,
   Key,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { Role } from '../types';
 import { APP_NAME, APP_VERSION, COMPANY_NAME, DEFAULT_TENANT_ID } from '../constants';
@@ -114,6 +116,28 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [tenantName, setTenantName] = useState<string>('');
   const [principalName, setPrincipalName] = useState<string>('guest');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Desktop-only rail collapse - mobile's off-canvas nav has no room
+  // problem to solve, this is purely for a founder who wants the sidebar
+  // out of the way on their own screen. Persisted per-browser like the
+  // group open/closed state above.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('curatom_sidebar_collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('curatom_sidebar_collapsed', next ? '1' : '0');
+      } catch {
+        /* ignore storage failures */
+      }
+      return next;
+    });
+  };
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     try {
       const stored = localStorage.getItem('curatom_nav_open_groups');
@@ -200,13 +224,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <p className="label-caps text-10 mt-4">{COMPANY_NAME}</p>
           <p className="mt-4 text-10 font-mono text-ink-secondary">{APP_VERSION}</p>
         </div>
-        <button
-          onClick={() => setMobileNavOpen(false)}
-          className="md:hidden text-ink-secondary hover:text-ink-primary p-4 -mr-4"
-          aria-label="Close menu"
-        >
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-4 shrink-0">
+          <button
+            onClick={toggleSidebarCollapsed}
+            className="hidden md:block text-ink-secondary hover:text-ink-primary p-4 rounded hover:bg-surface-300"
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+          >
+            <PanelLeftClose size={18} />
+          </button>
+          <button
+            onClick={() => setMobileNavOpen(false)}
+            className="md:hidden text-ink-secondary hover:text-ink-primary p-4 -mr-4"
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       <div className="px-16 py-12 border-b border-surface-300 bg-surface-200/50">
@@ -334,11 +368,98 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     </>
   );
 
+  // Collapsed rail: every real destination stays one click away (a
+  // single-item group navigates directly, a multi-item group expands the
+  // full sidebar back and opens that group) rather than hiding pages
+  // behind a rail that only shows icons for icons' sake.
+  const collapsedRail = (
+    <>
+      <div className="p-16 border-b border-surface-300 flex items-center justify-center">
+        <button
+          onClick={toggleSidebarCollapsed}
+          className="text-ink-secondary hover:text-ink-primary transition-colors p-6 rounded hover:bg-surface-300"
+          title="Expand sidebar"
+          aria-label="Expand sidebar"
+        >
+          <PanelLeftOpen size={18} />
+        </button>
+      </div>
+      <nav className="flex-1 py-12 px-8 space-y-4 overflow-y-auto flex flex-col items-center">
+        {PRIMARY_NAV.map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              title={item.label}
+              className={`flex items-center justify-center w-36 h-36 rounded-md transition-colors duration-150 ${
+                isActive ? 'bg-surface-300 text-accent' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
+              }`}
+            >
+              <Icon size={16} />
+            </Link>
+          );
+        })}
+        <div className="w-full border-t border-surface-300 my-8" />
+        {visibleGroups.map((group) => {
+          const GroupIcon = group.icon;
+          if (group.items.length === 1) {
+            const item = group.items[0];
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={group.id}
+                to={item.path}
+                title={item.label}
+                className={`flex items-center justify-center w-36 h-36 rounded-md transition-colors duration-150 ${
+                  isActive ? 'bg-surface-300 text-accent' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
+                }`}
+              >
+                <Icon size={16} />
+              </Link>
+            );
+          }
+          const isGroupActive = group.items.some((item) => item.path === location.pathname);
+          return (
+            <button
+              key={group.id}
+              onClick={() => {
+                setOpenGroups((prev) => ({ ...prev, [group.id]: true }));
+                toggleSidebarCollapsed();
+              }}
+              title={`${group.label} — expand sidebar`}
+              className={`flex items-center justify-center w-36 h-36 rounded-md transition-colors duration-150 ${
+                isGroupActive ? 'text-accent' : 'text-ink-secondary hover:bg-surface-200 hover:text-ink-primary'
+              }`}
+            >
+              <GroupIcon size={16} />
+            </button>
+          );
+        })}
+      </nav>
+      <div className="p-12 border-t border-surface-300 bg-surface-100 flex justify-center">
+        <button
+          onClick={handleLogout}
+          className="text-ink-secondary hover:text-ink-primary transition-colors p-6 rounded hover:bg-surface-300"
+          title="Sign Out"
+        >
+          <LogOut size={16} />
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex h-screen w-full overflow-hidden font-ui text-ink-primary bg-canvas">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 bg-surface-100 border-r border-surface-300 flex-col z-10 shrink-0">
-        {sidebarContent}
+      <aside
+        className={`hidden md:flex bg-surface-100 border-r border-surface-300 flex-col z-10 shrink-0 transition-all duration-150 ${
+          sidebarCollapsed ? 'w-56' : 'w-64'
+        }`}
+      >
+        {sidebarCollapsed ? collapsedRail : sidebarContent}
       </aside>
 
       {/* Mobile off-canvas sidebar */}

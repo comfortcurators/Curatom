@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, UserPlus, Trash2, ShieldAlert, Users, Check, X, Clock, Pencil } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, ShieldAlert, Users, Check, X, Clock, Pencil, Cpu } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { TeamUser, Role, PendingApproval, Tenant } from '../types';
+import { TeamUser, Role, PendingApproval, Tenant, Atom } from '../types';
 
 const ROLE_OPTIONS: Role[] = ['Owner', 'Tech Lead', 'Software Designer', 'Technical Reviewer', 'Auditor'];
 
@@ -26,6 +27,8 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
 
 export const Team: React.FC = () => {
   const [users, setUsers] = useState<TeamUser[]>([]);
+  const [atoms, setAtoms] = useState<Atom[]>([]);
+  const [atomsLoading, setAtomsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,9 +172,21 @@ export const Team: React.FC = () => {
     }
   };
 
+  const loadAtoms = useCallback(async () => {
+    try {
+      const res = await api.getAtoms();
+      setAtoms(res.items.filter((a) => a.status !== 'retired'));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAtomsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     load();
-  }, []);
+    loadAtoms();
+  }, [loadAtoms]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -411,29 +426,36 @@ export const Team: React.FC = () => {
 
       <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated overflow-hidden">
         <div className="p-16 border-b border-surface-300">
-          <h2 className="text-14 text-ink-primary font-medium">Everyone with access</h2>
+          <h2 className="text-14 text-ink-primary font-medium">Everyone and everything with access</h2>
+          <p className="text-11 text-ink-secondary font-prose mt-2">
+            People and AI agent keys, together — an agent's "key name" is what identifies it, same as a person's
+            username. Manage an agent's key itself (rotate, retire, state) from Atom Registry.
+          </p>
         </div>
-        {loading ? (
+        {loading || atomsLoading ? (
           <div className="flex justify-center py-32 text-ink-secondary">
             <Loader2 className="animate-spin" size={22} />
           </div>
-        ) : users.length === 0 ? (
-          <div className="text-center py-32 text-ink-secondary text-13 font-prose">Nobody else has a real account yet.</div>
+        ) : users.filter((u) => u.is_active).length === 0 && atoms.length === 0 ? (
+          <div className="text-center py-32 text-ink-secondary text-13 font-prose">Nobody else has access yet.</div>
         ) : (
           <div className="divide-y divide-surface-300">
             {users
               .filter((u) => u.is_active)
               .map((u) => (
-                <div key={u.username} className="flex items-center justify-between p-14">
-                  <div>
-                    <div className="text-13 text-ink-primary font-medium flex items-center gap-6">
-                      {u.display_name}
-                      {u.email_verified === false && (
-                        <span className="text-10 font-mono text-accent bg-accent/10 px-6 py-1 rounded uppercase">Email unverified</span>
-                      )}
-                    </div>
-                    <div className="text-11 text-ink-secondary font-mono">
-                      {u.username} · {ROLE_DISPLAY_NAMES[u.role] || u.role}
+                <div key={`human_${u.username}`} className="flex items-center justify-between p-14">
+                  <div className="flex items-center gap-10">
+                    <Users size={16} className="text-ink-secondary shrink-0" />
+                    <div>
+                      <div className="text-13 text-ink-primary font-medium flex items-center gap-6">
+                        {u.display_name}
+                        {u.email_verified === false && (
+                          <span className="text-10 font-mono text-accent bg-accent/10 px-6 py-1 rounded uppercase">Email unverified</span>
+                        )}
+                      </div>
+                      <div className="text-11 text-ink-secondary font-mono">
+                        {u.username} · {ROLE_DISPLAY_NAMES[u.role] || u.role}
+                      </div>
                     </div>
                   </div>
                   {u.username !== currentUsername && (
@@ -447,6 +469,30 @@ export const Team: React.FC = () => {
                   )}
                 </div>
               ))}
+            {atoms.map((a) => (
+              <Link
+                key={`atom_${a.id}`}
+                to="/registry"
+                className="flex items-center justify-between p-14 hover:bg-surface-200/60 transition-colors"
+              >
+                <div className="flex items-center gap-10 min-w-0">
+                  <Cpu size={16} className="text-accent shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-13 text-ink-primary font-medium truncate">{a.name}</div>
+                    <div className="text-11 text-ink-secondary font-mono truncate">
+                      {a.id} · {a.model_family}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  className={`text-10 px-8 py-3 rounded font-mono uppercase shrink-0 ${
+                    a.status === 'active' ? 'bg-surface-300 text-accent border border-accent/40' : 'bg-surface-400 text-ink-secondary'
+                  }`}
+                >
+                  {a.status}
+                </span>
+              </Link>
+            ))}
           </div>
         )}
       </div>
