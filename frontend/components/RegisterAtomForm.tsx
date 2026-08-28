@@ -5,6 +5,12 @@ import { api } from '../api';
 const MODEL_FAMILIES = ['Claude', 'GPT', 'Gemini', 'Other'];
 const ALL_REGIONS = ['IN', 'EU', 'UK', 'CN', 'US', 'SG', 'AU'];
 const DEFAULT_REGIONS = ['SG', 'US', 'IN', 'EU'];
+// YAML costs fewer tokens per response than JSON (no repeated quotes/braces/
+// commas) for the same information, and every agent response already knows
+// how to render either (backend's render_for_principal). YAML is the
+// sensible default; JSON stays available for a caller that specifically
+// expects it.
+const RESPONSE_FORMATS = ['YAML', 'JSON', 'Markdown'];
 
 interface Props {
   title?: string;
@@ -18,6 +24,7 @@ interface Props {
 export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', onConnected }) => {
   const [name, setName] = useState('');
   const [modelFamily, setModelFamily] = useState('Claude');
+  const [responseFormat, setResponseFormat] = useState('YAML');
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [regions, setRegions] = useState<string[]>(DEFAULT_REGIONS);
   const [saving, setSaving] = useState(false);
@@ -40,7 +47,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
         model_family: modelFamily,
         description: `Connected from ${title}.`,
         requires_approval: requiresApproval,
-        profile: { permitted_regions: regions },
+        profile: { permitted_regions: regions, format: responseFormat },
       });
       setApiKey(res.api_key);
       setAtomId(res.atom.id);
@@ -55,6 +62,7 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
   const reset = () => {
     setName('');
     setModelFamily('Claude');
+    setResponseFormat('YAML');
     setRequiresApproval(false);
     setRegions(DEFAULT_REGIONS);
     setApiKey(null);
@@ -152,6 +160,24 @@ export const RegisterAtomForm: React.FC<Props> = ({ title = 'Add an agent key', 
             ))}
           </select>
         </div>
+      </div>
+      <div>
+        <label className="block text-11 font-mono text-ink-secondary mb-6">Response format</label>
+        <select
+          className="w-full sm:w-1/2 bg-surface-200 border border-surface-400 rounded p-8 text-13 text-ink-primary focus:border-accent outline-none font-mono"
+          value={responseFormat}
+          onChange={(e) => setResponseFormat(e.target.value)}
+        >
+          {RESPONSE_FORMATS.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </select>
+        <p className="text-11 text-ink-secondary font-prose mt-6">
+          YAML costs this key fewer tokens per call than JSON for the same data — keep it unless something on the
+          other end specifically needs JSON.
+        </p>
       </div>
       <div>
         <label className="block text-11 font-mono text-ink-secondary mb-6">

@@ -856,7 +856,11 @@ async def register_atom(
     default_profile = fleet.get("default_profile", {})
     given_profile = atom.profile or {}
     derived_profile = {
-        "format": given_profile.get("format") or default_profile.get("format", "JSON"),
+        # YAML by default, not JSON - it's the same information with far
+        # less punctuation-token overhead per response, and every agent
+        # response already knows how to render it (render_for_principal).
+        # A registrant can still override to JSON/Markdown explicitly.
+        "format": given_profile.get("format") or default_profile.get("format", "YAML"),
         "retention_window_hours": given_profile.get("retention_window_hours") or default_profile.get("retention_window_hours", 168),
         "accuracy_tolerance": given_profile.get("accuracy_tolerance") or default_profile.get("accuracy_tolerance", "High"),
         "system_persona": given_profile.get("system_persona") or default_profile.get("system_persona", "You are a precise enterprise agent."),
@@ -1685,10 +1689,25 @@ def _dict_to_markdown(payload: Any, level: int = 0) -> str:
     return "\n".join(lines)
 
 
+def _drop_nulls(value: Any) -> Any:
+    # An unanswered optional field costs the same tokens as an answered one
+    # once it's serialized as `"field": null` - and most of BusinessContext's
+    # fields are optional, so a partially-onboarded tenant was billing every
+    # agent call for a wall of nulls it can't act on anyway. Human callers are
+    # untouched (see the early return below); the dashboard form still wants
+    # every key present to render its fields correctly.
+    if isinstance(value, dict):
+        return {k: _drop_nulls(v) for k, v in value.items() if v is not None}
+    if isinstance(value, list):
+        return [_drop_nulls(v) for v in value]
+    return value
+
+
 def render_for_principal(payload: Dict[str, Any], ctx: AuthContext):
     if ctx.principal_type != "agent" or not ctx.atom_profile:
         return payload
-    fmt = (ctx.atom_profile.get("format") or "JSON").strip().lower()
+    payload = _drop_nulls(payload)
+    fmt = (ctx.atom_profile.get("format") or "YAML").strip().lower()
     if fmt.startswith("yaml"):
         return Response(content=yaml.dump(payload, sort_keys=False, allow_unicode=True), media_type="application/yaml")
     if fmt.startswith("markdown") or fmt == "md":
