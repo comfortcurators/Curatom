@@ -13,6 +13,7 @@ os.environ.setdefault("PROJECT_ID", "curatom-test")
 os.environ.setdefault("DEMO_USERNAME", "admin")
 os.environ.setdefault("DEMO_PASSWORD", "test-password")
 
+from services.corpus_export import _strip_to_exportable
 from core.security import (
     detect_and_redact_pii,
     validate_classification,
@@ -55,3 +56,24 @@ def test_pii_redaction_still_catches_classic_nanp_phone():
     redacted, detected = detect_and_redact_pii("Call the front desk at 415-555-2671.")
     assert "phone" in detected
     assert "415-555-2671" not in redacted
+
+
+def test_corpus_export_strips_source_ref_and_doc_id():
+    # source_ref carries org_id/tenant_id/memory_id and exists only so an
+    # erasure or opt-out can find and purge the document inside Firestore -
+    # exporting it as-is would leak tenant identity into the file, defeating
+    # the point of de-identifying the corpus in the first place.
+    entry = {
+        "content_redacted": "hello",
+        "topic": "t",
+        "region": "US",
+        "classification": "internal",
+        "pii_classes": [],
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "id": "corpus_abc",
+        "source_ref": {"org_id": "org_x", "tenant_id": "tenant_x", "memory_id": "mem_x"},
+    }
+    exported = _strip_to_exportable(entry)
+    assert "source_ref" not in exported
+    assert "id" not in exported
+    assert exported["content_redacted"] == "hello"

@@ -16,6 +16,16 @@ class GlobalRepository:
         docs = await self.db.collection("model_directory").get()
         return [d.to_dict() for d in docs]
 
+    async def list_all_training_corpus_entries(self) -> List[Dict[str, Any]]:
+        # Deliberately not tenant-scoped: the corpus is de-identified by
+        # construction (no org_id/tenant_id on the document, see
+        # TenantScopedRepository.write_training_corpus_entry), so reading it
+        # across every consenting tenant is what "aggregate corpus" means -
+        # a single tenant's view of it would just be the same data filtered
+        # by a field that isn't there.
+        docs = await self.db.collection("training_corpus").get()
+        return [d.to_dict() for d in docs]
+
     async def search_excerpts_by_model(self, model_id: str, query_embedding: List[float], limit: int = 4) -> List[Dict[str, Any]]:
         coll = self.db.collection("excerpts")
         if model_id:

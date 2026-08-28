@@ -152,6 +152,12 @@ class ApiClient {
       body: JSON.stringify({ opt_in: optIn })
     });
   }
+  exportTrainingCorpus() {
+    return this.request<{ bucket: string; object: string; entry_count: number; exported_at: string }>(
+      '/training-corpus/export',
+      { method: 'POST' }
+    );
+  }
 
   // Atoms
   getAtoms(cursor?: string, limit: number = 50) { 

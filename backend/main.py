@@ -39,6 +39,7 @@ from services.directory_fetcher import run_ingestion, embed_text, is_ingestion_s
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
 from services.chat_handler import handle_chat
 from services.vision_context import extract_business_context_from_image
+from services.corpus_export import export_training_corpus_to_gcs
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from models.schemas import ChatRequest, IdentifyRequest, MemoryCreate
@@ -736,6 +737,29 @@ async def set_training_consent(payload: TrainingConsentPayload, ctx: AuthContext
         "training_data_opt_in": tenant.get("training_data_opt_in", False),
         "purged_corpus_entries": purged_count,
     }
+
+@app.post("/training-corpus/export")
+async def export_training_corpus(ctx: AuthContext = Depends(authorize("tenant.write"))):
+    # Manual, Owner-triggered, real: writes the current aggregate corpus
+    # (every consenting tenant's de-identified entries, source_ref stripped
+    # before anything leaves Firestore - see corpus_export.py) to a GCS
+    # bucket as JSONL. That is the entire scope of this route. No training
+    # job or fine-tuning pipeline reads from that bucket - this is the
+    # "collected somewhere real" step, not a claim that training happens.
+    if ctx.role != "Owner":
+        raise HTTPException(403, detail="Only an Owner can trigger this")
+    entries = await GlobalRepository().list_all_training_corpus_entries()
+    result = await asyncio.to_thread(export_training_corpus_to_gcs, entries)
+
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    await repo.write_audit_log({
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "actor": ctx.principal_id,
+        "action": "training_corpus.export",
+        "resource": f"gs://{result['bucket']}/{result['object']}",
+        "details": {"entry_count": result["entry_count"]},
+    })
+    return result
 
 @app.get("/fleets")
 async def list_fleets(

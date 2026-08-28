@@ -42,6 +42,7 @@ export const Team: React.FC = () => {
   const [nameDraft, setNameDraft] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [savingConsent, setSavingConsent] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const loadTenant = useCallback(async () => {
     try {
@@ -86,6 +87,22 @@ export const Team: React.FC = () => {
       alert(`Could not save that: ${e.message}`);
     } finally {
       setSavingConsent(false);
+    }
+  };
+
+  const handleExportCorpus = async () => {
+    setExporting(true);
+    try {
+      const res = await api.exportTrainingCorpus();
+      alert(
+        res.entry_count === 0
+          ? 'Nothing to export yet — no consenting tenant has any corpus entries.'
+          : `Wrote ${res.entry_count} entries to gs://${res.bucket}/${res.object}`
+      );
+    } catch (e: any) {
+      alert(`Export failed: ${e.message}`);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -265,6 +282,20 @@ export const Team: React.FC = () => {
             </span>
           </span>
         </label>
+        <div className="mt-16 pt-16 border-t border-surface-300 flex items-center justify-between gap-12">
+          <p className="text-11 text-ink-secondary font-prose leading-relaxed">
+            Write the current aggregate corpus (every consenting tenant's de-identified entries) to storage.
+            Nothing downstream reads it yet — this just puts it somewhere real.
+          </p>
+          <button
+            onClick={handleExportCorpus}
+            disabled={exporting}
+            className="flex items-center gap-6 px-12 py-7 bg-surface-200 hover:bg-surface-300 text-ink-primary rounded text-12 font-mono transition-colors disabled:opacity-50 shrink-0"
+          >
+            {exporting ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+            Export corpus
+          </button>
+        </div>
       </div>
 
       {(approvalsLoading || approvals.length > 0) && (
