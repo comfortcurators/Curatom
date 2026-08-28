@@ -94,7 +94,19 @@ class TenantScopedRepository:
         return data
 
     async def update_tenant_name(self, name: str) -> Dict[str, Any]:
-        await self.db.collection("tenants").document(self.tenant_id).update({"name": name})
+        # .update() throws NotFound on a document that was never created via
+        # create_tenant() - real for the built-in demo account, whose tenant
+        # ("tenant_apac_enterprise") has never had a Firestore doc at all.
+        # Found live: renaming or changing training consent on that account
+        # both 500'd. .set(merge=True) creates the doc if it's missing
+        # instead of assuming it exists, and org_id/tenant_id are included
+        # every time so a from-scratch doc still passes get_tenant()'s
+        # ownership check rather than looking like it belongs to no one.
+        await self.db.collection("tenants").document(self.tenant_id).set({
+            "tenant_id": self.tenant_id,
+            "org_id": self.org_id,
+            "name": name,
+        }, merge=True)
         doc = await self.db.collection("tenants").document(self.tenant_id).get()
         return doc.to_dict()
 
@@ -105,11 +117,13 @@ class TenantScopedRepository:
         # decision is recorded honestly for whenever (if ever) that work
         # gets built, not so this endpoint can claim to already do it.
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        await self.db.collection("tenants").document(self.tenant_id).update({
+        await self.db.collection("tenants").document(self.tenant_id).set({
+            "tenant_id": self.tenant_id,
+            "org_id": self.org_id,
             "training_data_opt_in": opt_in,
             "training_data_opt_in_decided_by": decided_by,
             "training_data_opt_in_decided_at": now_iso,
-        })
+        }, merge=True)
         doc = await self.db.collection("tenants").document(self.tenant_id).get()
         return doc.to_dict()
 
