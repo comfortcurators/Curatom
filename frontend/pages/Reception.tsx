@@ -186,7 +186,11 @@ export const Reception: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center relative font-ui p-24 bg-canvas overflow-hidden">
+    // No bg-canvas here: WovenLocusField now renders as an earlier DOM
+    // sibling (mounted at the App root, not nested inside this div like
+    // before), so an opaque background here would paint over it instead of
+    // being painted under it as it was when the field was a child.
+    <div className="min-h-screen flex flex-col items-center justify-center relative font-ui p-24 overflow-hidden">
       <div className="text-center mb-36 relative z-10">
         <h1 className="font-display text-48 font-light text-ink-primary mb-8 tracking-tight">
           {APP_NAME}
