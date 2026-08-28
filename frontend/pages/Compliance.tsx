@@ -21,9 +21,24 @@ const PageShell: React.FC<{ title: string; children: React.ReactNode }> = ({ tit
 export const PrivacyPolicy: React.FC = () => (
   <PageShell title="Privacy Policy">
     <p>
-      This policy covers data processed by {APP_NAME}, operated by {LEGAL_NAME}
-      {' '}(CIN {CIN}). It describes what we actually collect and store in this
-      application — not a generic template.
+      This is not a generic legal template, and it is not drafted by a lawyer — it is an honest, plain description
+      of what {APP_NAME}, operated by {LEGAL_NAME} (CIN {CIN}), actually does with your data, written by the people
+      who wrote the code. If you need a document that carries legal weight rather than technical accuracy, that is
+      still pending your own counsel; this page will link to it once it exists, rather than pretend to be it.
+    </p>
+    <p>
+      <strong className="text-ink-primary">Who actually processes your data — no vaguer than this.</strong>{' '}
+      It is basically Google, plus one vendor for email. Specifically:
+    </p>
+    <ul className="list-disc list-inside space-y-6">
+      <li><strong className="text-ink-primary">Google Cloud Firestore</strong> — every record this app stores (business context, memories, atoms, audit logs, everything) lives here.</li>
+      <li><strong className="text-ink-primary">Google Cloud Vertex AI (Gemini)</strong> — every AI-generated response, embedding, and vision extraction (like the photograph-your-notes onboarding path) is processed by Google's model, not ours.</li>
+      <li><strong className="text-ink-primary">Google Cloud Run / Cloud Build</strong> — where this application's code actually runs and is built.</li>
+      <li><strong className="text-ink-primary">Zoho ZeptoMail</strong> — the one non-Google vendor. Sends the account-verification emails; sees your email address and the verification code, nothing else.</li>
+    </ul>
+    <p>
+      That is the complete list. There is no analytics vendor, no advertising pixel, no third party we haven't
+      named above.
     </p>
     <p>
       <strong className="text-ink-primary">What we store.</strong> Principal
@@ -47,10 +62,10 @@ export const PrivacyPolicy: React.FC = () => (
     </p>
     <p>
       <strong className="text-ink-primary">What this policy does not yet
-      cover.</strong> Backups, exported data, and any logs held by
-      underlying infrastructure providers (Google Cloud) are outside this
-      application's direct control and are governed by those providers' own
-      terms.
+      cover.</strong> Backups and any logs Google or Zoho hold under their own
+      retention schedules are outside this application's direct control and
+      are governed by those providers' own terms — Google's and Zoho's, not
+      ours to make promises about.
     </p>
     <p>
       Questions: <a href="mailto:mail@comfortcurators.in" className="text-accent hover:text-accent-hover">mail@comfortcurators.in</a>
