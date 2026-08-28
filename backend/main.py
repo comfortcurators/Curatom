@@ -1542,9 +1542,16 @@ async def get_directory_status(ctx: AuthContext = Depends(authorize("directory.r
     total_hits = cache.get("total_hits", 0)
     hit_rate = (total_hits / total_lookups * 100) if total_lookups > 0 else 0.0
     excerpts_count = await global_repo.get_excerpts_count()
-    
+    # Same discipline as excerpts_count above: a real query, not
+    # state["models_ingested"] - that field is overwritten mid-run with a
+    # partial in-progress count (ingest_huggingface writes it once per
+    # model as it goes), so reading it while a sync is running showed the
+    # model total regress from 9 down to 1, then climb back up - a false
+    # "did we just lose data" signal live-verified on a real ingestion run.
+    model_count = await global_repo.get_directory_model_count()
+
     return {
-        "total_models": state.get("models_ingested", 0),
+        "total_models": model_count,
         "total_excerpts": excerpts_count,
         "is_ingesting": state.get("is_ingesting", False),
         "is_stale": is_ingestion_stale(state),

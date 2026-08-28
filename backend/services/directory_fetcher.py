@@ -149,10 +149,7 @@ async def ingest_huggingface(max_pages: int = 5):
                     "fetched_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
                 })
                 count += 1
-                
-                state_ref = db.collection("system").document("ingestion_state")
-                await state_ref.set({"models_ingested": count, "is_ingesting": True}, merge=True)
-                
+
     return count
 
 async def ingest_closed_models():

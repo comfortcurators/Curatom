@@ -65,6 +65,10 @@ class GlobalRepository:
         count_res = await self.db.collection("excerpts").count().get()
         return count_res[0][0].value if count_res else 0
 
+    async def get_directory_model_count(self) -> int:
+        count_res = await self.db.collection("model_directory").count().get()
+        return count_res[0][0].value if count_res else 0
+
 
 class TenantScopedRepository:
     def __init__(self, org_id: str, tenant_id: str):
