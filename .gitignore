@@ -21,6 +21,9 @@ dist/
 .vite/
 *.tsbuildinfo
 
+# Firebase CLI local deploy cache
+.firebase/
+
 # Editors and operating systems
 .DS_Store
 Thumbs.db
