@@ -16,6 +16,7 @@ import { Feed } from './pages/Feed';
 import { Decisions } from './pages/Decisions';
 import { Sketchbook } from './pages/Sketchbook';
 import { Playground } from './pages/Playground';
+import { Architecture } from './pages/Architecture';
 import {
   PrivacyPolicy,
   AITransparency,
@@ -34,7 +35,6 @@ const App: React.FC = () => {
           <Route path="/reception" element={<Reception />} />
           <Route path="/" element={<Overview />} />
           <Route path="/team" element={<Team />} />
-          <Route path="/task-worker-status" element={<Missions />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/fleets" element={<Fleets />} />
           <Route path="/registry" element={<Registry />} />
@@ -45,6 +45,8 @@ const App: React.FC = () => {
           <Route path="/decisions" element={<Decisions />} />
           <Route path="/sketchbook" element={<Sketchbook />} />
           <Route path="/playground" element={<Playground />} />
+          <Route path="/architecture" element={<Architecture />} />
+          <Route path="/task-worker-status" element={<Missions />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/ai-transparency" element={<AITransparency />} />
           <Route path="/help" element={<HelpFAQ />} />

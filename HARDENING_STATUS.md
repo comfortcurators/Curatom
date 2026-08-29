@@ -1,8 +1,10 @@
 # Curatom Enterprise rv0.2.0 — Hardening Status
 
 This archive contains the reconciled security/correctness pass for controlled
-staging and open-source review. It is materially safer than the source
-candidate, but it is **not production-ready**.
+staging and open-source review. rv0.3.0 is the All Things Agentic evaluation
+build: ADK fleet runtime and durable tasks are live. SSO/OIDC and MFA are
+still absent. It is **not** a claim of a finished identity provider.
+
 
 ## Implemented in rv0.2.0
 
@@ -59,9 +61,13 @@ candidate, but it is **not production-ready**.
    (`ZEPTOMAIL_TOKEN` unset means no email leaves the service, and
    registration says so honestly rather than claiming otherwise). Session
    revocation is JWT expiry only; there is no explicit sign-out-everywhere.
-2. **Durable tasks:** `/tasks` intentionally returns HTTP 501. Queueing,
-   retries, idempotency, atomic transitions, dead-letter handling, and worker
-   authentication are not implemented.
+2. **Durable tasks:** `/tasks` writes a Firestore record and runs the Google
+   ADK fleet. Cloud Tasks calls `POST /tasks/execute` when
+   `SERVICE_BASE_URL` and `INGESTION_TASK_SECRET` are set; otherwise the
+   creating request runs the fleet inline. Retries stop after 3 attempts and
+   mark the record failed. Dead-letter is that failed record, not a separate
+   queue.
+
 3. **ABAC coverage:** route-level authorization is now proven by automated
    test (`test_route_authorization.py`) — every non-ops route carries an
    `authorize()` dependency and none reads a role from a client header. What
@@ -79,12 +85,13 @@ candidate, but it is **not production-ready**.
    and `DEPLOYMENT_VERIFICATION.md` lists the checks that close this item —
    but its results table is still empty, so **this boundary remains open until
    someone runs those checks against a real project and records the output.**
-8. **Google Agent Development Kit (ADK):** not integrated. An earlier draft
-   contained a placeholder HTTP client with no corresponding `google-adk`
-   dependency and no provisioned agent to call; it has been removed rather
-   than left in an ambiguous state. Implementing real ADK agents (a
-   Requester/Specialist pair communicating through this registry, with a
-   provisioned `reasoningEngines` deployment) remains open work.
+8. **Google Agent Development Kit (ADK):** integrated. `backend/agents/adk_fleet.py`
+   defines a Gateway / Memory / Orchestrator fleet on `gemini-3.5-flash`.
+   `GET /v1/adk/catalog` reports the loaded framework. If `google-adk` cannot
+   import, the same tools run through a google-genai function-calling loop —
+   still Gemini 3.5, never a stub. `framework_status()` is the source of truth
+   for which path is live.
+
 
 ## Fail-closed configuration
 

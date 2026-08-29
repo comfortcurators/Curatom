@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # incoming request headers, which a proxy could spoof.
     SERVICE_BASE_URL: str = os.getenv("SERVICE_BASE_URL", "")
     INGESTION_TASKS_QUEUE: str = os.getenv("INGESTION_TASKS_QUEUE", "directory-ingestion")
+    FLEET_TASKS_QUEUE: str = os.getenv("FLEET_TASKS_QUEUE", "curatom-fleet-tasks")
 
 settings = Settings()
 

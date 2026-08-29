@@ -45,7 +45,9 @@ gcloud services enable \
   firestore.googleapis.com \
   secretmanager.googleapis.com \
   artifactregistry.googleapis.com \
-  aiplatform.googleapis.com
+  aiplatform.googleapis.com \
+  cloudtasks.googleapis.com
+
 
 # ---------------------------------------------------------------------------
 # 2. Service account with least privilege
@@ -73,6 +75,13 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --role="roles/aiplatform.user" \
   --condition=None >/dev/null
 
+echo "==> Granting roles/cloudtasks.enqueuer"
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" \
+  --role="roles/cloudtasks.enqueuer" \
+  --condition=None >/dev/null
+
+
 # ---------------------------------------------------------------------------
 # 3. Secrets — created once, reused across revisions.
 #
@@ -95,6 +104,8 @@ create_secret_if_absent() {
 
 create_secret_if_absent "curatom-jwt-secret"    "$(openssl rand -base64 48)"
 create_secret_if_absent "curatom-demo-password" "$(openssl rand -base64 32)"
+create_secret_if_absent "curatom-ingestion-task-secret" "$(openssl rand -base64 48)"
+
 
 if [[ -n "${GEMINI_API_KEY:-}" ]]; then
   create_secret_if_absent "curatom-api-key" "${GEMINI_API_KEY}"
@@ -124,6 +135,23 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 4b. Cloud Tasks queues
+# ---------------------------------------------------------------------------
+echo "==> Ensuring Cloud Tasks queues"
+if gcloud tasks queues describe directory-ingestion --location="${REGION}" >/dev/null 2>&1; then
+  echo "==> Queue directory-ingestion exists"
+else
+  gcloud tasks queues create directory-ingestion --location="${REGION}" \
+    --max-attempts=3 --max-concurrent-dispatches=1
+fi
+if gcloud tasks queues describe curatom-fleet-tasks --location="${REGION}" >/dev/null 2>&1; then
+  echo "==> Queue curatom-fleet-tasks exists"
+else
+  gcloud tasks queues create curatom-fleet-tasks --location="${REGION}" \
+    --max-attempts=3 --max-concurrent-dispatches=4 --max-dispatches-per-second=2
+fi
+
+# ---------------------------------------------------------------------------
 # 5. Deploy backend to Cloud Run
 #
 # --allow-unauthenticated exposes the HTTP surface; the application's own
@@ -131,16 +159,31 @@ fi
 # dependency, verified by backend/tests/test_route_authorization.py.
 # ---------------------------------------------------------------------------
 echo "==> Deploying ${SERVICE_NAME} to Cloud Run"
+ZEPTO_SECRET_ARG=""
+if gcloud secrets describe curatom-zeptomail-token >/dev/null 2>&1; then
+  gcloud secrets add-iam-policy-binding curatom-zeptomail-token \
+    --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" \
+    --role="roles/secretmanager.secretAccessor" >/dev/null
+  ZEPTO_SECRET_ARG="ZEPTOMAIL_TOKEN=curatom-zeptomail-token:latest,"
+fi
+
 gcloud run deploy "${SERVICE_NAME}" \
   --source . \
   --region "${REGION}" \
   --service-account "${SERVICE_ACCOUNT_EMAIL}" \
   --allow-unauthenticated \
-  --set-env-vars "PROJECT_ID=${PROJECT_ID},LOCATION=${REGION},DEMO_USERNAME=${DEMO_USERNAME}" \
-  --set-secrets "${GEMINI_SECRET_ARG}JWT_SECRET=curatom-jwt-secret:latest,DEMO_PASSWORD=curatom-demo-password:latest"
+  --timeout=3600 \
+  --set-env-vars "PROJECT_ID=${PROJECT_ID},LOCATION=${REGION},DEMO_USERNAME=${DEMO_USERNAME},FRONTEND_URL_PRODUCTION=https://curatom.comfortcurators.io,FLEET_TASKS_QUEUE=curatom-fleet-tasks,INGESTION_TASKS_QUEUE=directory-ingestion" \
+  --set-secrets "${GEMINI_SECRET_ARG}${ZEPTO_SECRET_ARG}JWT_SECRET=curatom-jwt-secret:latest,DEMO_PASSWORD=curatom-demo-password:latest,INGESTION_TASK_SECRET=curatom-ingestion-task-secret:latest"
 
 BACKEND_URL="$(gcloud run services describe "${SERVICE_NAME}" \
   --region "${REGION}" --format='value(status.url)')"
+
+echo "==> Binding SERVICE_BASE_URL for Cloud Tasks callbacks"
+gcloud run services update "${SERVICE_NAME}" \
+  --region "${REGION}" \
+  --update-env-vars "SERVICE_BASE_URL=${BACKEND_URL}"
+
 
 echo
 echo "==> Deployed (frontend + backend, one service): ${BACKEND_URL}"

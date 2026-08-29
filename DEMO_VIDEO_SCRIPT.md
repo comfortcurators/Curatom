@@ -12,12 +12,16 @@ all three, and every claim I'm about to make is backed by a test in the repo,
 not a slide."
 
 ## 0:20–0:50 — Live login + tenant scoping
-- Screen: open the live Cloud Run URL.
-- Log in as the demo account.
+- Screen: open https://curatom.comfortcurators.io
+- Open `/#/architecture` first (no login) and point at the live Cloud Run
+  revision and `/ops/gcp-proof` JSON — this is the required "visible proof
+  the backend runs on Google Cloud."
+- Then register a workspace or log in as the demo account.
 - Show the dashboard/atom list.
 "This is running live on Cloud Run right now — one service, frontend and
 API baked into the same container. Everything you're about to see is a real
 request hitting Firestore and Gemini through Vertex AI, not a mock."
+
 
 ## 0:50–1:30 — Policy-aware recall
 - Trigger a memory recall / chat query.
@@ -30,17 +34,14 @@ principal's classification ceiling and permitted regions before they ever
 reach the model — unknown or missing security metadata fails closed, it
 doesn't get through by default."
 
-## 1:30–2:00 — Show a test, not just a claim
-- Switch to terminal / editor, briefly show
-  `backend/tests/test_route_authorization.py` and/or
-  `test_tenant_isolation`.
-"We don't just say this is enforced — cut here to
-`test_route_authorization.py`: it asserts every non-ops route carries a real
+## 1:30–2:00 — ADK fleet task, then a test
+- Fleet Runtime: submit a goal, show gateway + memory specialists.
+- Switch to `backend/tests/test_route_authorization.py`.
+"The fleet is Google ADK on Gemini 3.5. Isolation is not a slide —
+test_route_authorization.py asserts every non-ops route carries a real
 authorization policy, and that no route trusts a role header from the
-client. Same discipline for tenant isolation and for subject erasure — when
-someone asks to be forgotten, the test proves every memory, cache entry,
-recall log, and task record was actually deleted, not just the primary
-row."
+client. Same discipline for tenant isolation and subject erasure."
+
 
 ## 2:00–2:20 — The stack
 - Show `gcloud run services describe curatom-backend` or the Cloud Console

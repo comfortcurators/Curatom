@@ -37,6 +37,13 @@ from services.repository import TenantScopedRepository, GlobalRepository
 from services.policy_engine import PolicyEngine, authorize
 from services.directory_fetcher import run_ingestion, embed_text, is_ingestion_stale
 from services.task_queue import enqueue_ingestion_task
+from services.task_runtime import (
+    create_task,
+    dispatch_task,
+    execute_task,
+    public_task,
+)
+from agents.adk_fleet import catalog as adk_catalog, framework_status
 from core.embedding_config import EMBEDDING_MODEL, EMBEDDING_DIM
 from services.chat_handler import handle_chat
 from services.vision_context import extract_business_context_from_image
@@ -138,7 +145,7 @@ async def root(request: Request):
     if wants_json:
         return JSONResponse({
             "name": APP_NAME_CONST,
-            "version": "rv0.2.0",
+            "version": "rv0.3.0",
             "operator": "Comfort Curators Private Limited",
             "description": (
                 "The canonical record of what this business is and what any "
@@ -156,6 +163,9 @@ async def root(request: Request):
             "docs": "/docs",
             "llms_txt": "/llms.txt",
             "health": "/readyz",
+            "gcp_proof": "/ops/gcp-proof",
+            "adk_catalog": "/v1/adk/catalog",
+            "architecture": "/#/architecture",
             "auth_note": (
                 "Handshake and capabilities are public. Every other route "
                 "requires a session token (human login) or an atom API key "
@@ -209,7 +219,7 @@ async def public_capabilities():
                 "purpose": "Creates a durable atom identity and issues its API key. Not reachable from handshake alone — a human operator must authorize registration."
             }
         },
-        "note": "Tasks (/tasks) intentionally return HTTP 501 — not implemented, not a broken endpoint."
+        "note": "Durable tasks (/tasks) run on Google ADK + Cloud Tasks. GET /ops/gcp-proof for live Google Cloud evidence."
     }
 
 
@@ -292,7 +302,7 @@ async def llms_txt():
 
 > A tenant-scoped agent registry with policy-aware, residency-enforced,
 > grounded memory recall. Built by Comfort Curators Private Limited on
-> Google Cloud (Cloud Run, Firestore, Vertex AI / Gemini 2.5 Flash).
+> Google Cloud (Cloud Run, Firestore, Vertex AI / Gemini 3.5 Flash).
 
 Every route that reads or writes tenant data requires an authorization
 policy check; memory and recall results are filtered by classification
@@ -302,6 +312,9 @@ is stated without being traceable to something actually stored.
 ## Start here
 
 - Discovery manifest: GET / with `Accept: application/json`
+- Live Google Cloud proof (no credential): GET /ops/gcp-proof
+- ADK fleet catalog (no credential): GET /v1/adk/catalog
+- Durable fleet tasks (session or atom key): POST /tasks
 - Business context (session token or atom API key required): GET /context
   The founder's own answer to what this business is, who it serves, its
   current stack, and its priorities. Read this before acting on the
@@ -331,8 +344,8 @@ is stated without being traceable to something actually stored.
 ## Policy notes for agents
 
 - Public, no credential needed: /, /v1/reception/agents/handshake,
-  /v1/capabilities, /healthz, /readyz, /llms.txt, /docs, /openapi.json, and the
-  served frontend.
+  /v1/capabilities, /v1/adk/catalog, /ops/gcp-proof, /healthz, /readyz,
+  /llms.txt, /docs, /openapi.json, and the served frontend.
 - Everything else requires a session token (human login via
   /auth/login) or an atom API key (issued only after a human operator
   registers the atom via /atoms/register).
@@ -352,6 +365,76 @@ async def readyz():
         return {"status": "ready", "database": "connected"}
     except Exception as e:
         raise HTTPException(503, detail=f"Database unreachable: {str(e)}")
+
+
+@app.get("/ops/gcp-proof")
+async def gcp_proof():
+    """Public, secret-free evidence that this process is on Google Cloud.
+
+    Judges (and the demo video) can hit this from an incognito window.
+    It never returns credentials, tokens, or project-number IAM bindings.
+    """
+    firestore_status = "disconnected"
+    try:
+        await GlobalRepository().get_excerpts_count()
+        firestore_status = "connected"
+    except Exception as exc:
+        firestore_status = f"error:{type(exc).__name__}"
+
+    k_service = os.getenv("K_SERVICE", "")
+    k_revision = os.getenv("K_REVISION", "")
+    k_configuration = os.getenv("K_CONFIGURATION", "")
+    on_cloud_run = bool(k_service)
+    fw = framework_status()
+    return {
+        "product": "Curatom Enterprise",
+        "version": "rv0.3.0",
+        "publisher": "Comfort Curators Private Limited",
+        "hackathon": {
+            "name": "All Things Agentic",
+            "category": "Fortified Enterprise Fleet",
+            "required_model": "gemini-3.5-flash",
+            "required_framework": fw["framework"],
+            "required_cloud": ["Cloud Run", "Firestore", "Vertex AI", "Cloud Tasks", "Secret Manager"],
+        },
+        "google_cloud": {
+            "running_on_cloud_run": on_cloud_run,
+            "service": k_service or None,
+            "revision": k_revision or None,
+            "configuration": k_configuration or None,
+            "project_id": settings.PROJECT_ID,
+            "location": settings.LOCATION,
+            "vertex_ai": True if not settings.API_KEY else False,
+            "firestore": firestore_status,
+            "cloud_tasks_callback_configured": bool(
+                settings.SERVICE_BASE_URL and settings.INGESTION_TASK_SECRET
+            ),
+            "model": "gemini-3.5-flash",
+            "embedding_model": "gemini-embedding-001",
+            "embedding_dimensions": 768,
+        },
+        "agent_framework": fw,
+        "proof": (
+            "K_SERVICE/K_REVISION are injected only by Cloud Run. "
+            "Firestore connectivity is a live read of the excerpts collection. "
+            "Gemini calls authenticate via the runtime service account on Vertex AI "
+            "when API_KEY is unset."
+        ),
+    }
+
+
+@app.get("/v1/adk/catalog")
+async def public_adk_catalog():
+    return {
+        "framework": framework_status(),
+        "agents": adk_catalog(),
+        "runtime": {
+            "create": "POST /tasks",
+            "execute": "POST /tasks/execute (Cloud Tasks)",
+            "status": "GET /tasks/{task_id}",
+        },
+    }
+
 
 @app.get("/metrics")
 async def metrics(ctx: AuthContext = Depends(resolve_auth)):
@@ -618,10 +701,22 @@ async def deactivate_user(username: str, ctx: AuthContext = Depends(authorize("u
     })
     return {"status": "deactivated", "username": username}
 
-# --- Autonomous Taskmaster Workflow ---
-# Execution is intentionally disabled until a durable Cloud Tasks/Pub/Sub worker exists.
+# --- Autonomous Taskmaster Workflow (Google ADK + Cloud Tasks) ---
 class TaskCreateSchema(BaseModel):
     goal: str
+
+
+class TaskExecuteSchema(BaseModel):
+    task_id: str
+
+
+def _cloud_tasks_authorized(request: Request) -> None:
+    import hmac
+
+    provided = request.headers.get("X-Ingestion-Task-Secret", "")
+    expected = settings.INGESTION_TASK_SECRET or ""
+    if not expected or not hmac.compare_digest(provided, expected):
+        raise HTTPException(403, detail="Not a recognized task worker caller")
 
 
 @app.post("/tasks")
@@ -629,13 +724,30 @@ async def create_autonomous_task(
     payload: TaskCreateSchema,
     ctx: AuthContext = Depends(authorize("task.create")),
 ):
-    raise HTTPException(
-        status_code=501,
-        detail={
-            "code": "not_implemented",
-            "message": "Task execution is not yet available. This endpoint requires a durable worker (Cloud Tasks/Pub/Sub) which is not deployed.",
-        },
-    )
+    try:
+        record = await create_task(ctx, payload.goal)
+    except ValueError as exc:
+        raise HTTPException(400, detail={"code": "invalid_goal", "message": str(exc)}) from exc
+
+    record, mode = await dispatch_task(record)
+    if mode == "inline":
+        try:
+            record = await execute_task(ctx.org_id, ctx.tenant_id, record["task_id"], attempt=1)
+        except Exception as exc:
+            logger.exception("Inline fleet task failed")
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "code": "task_failed",
+                    "message": "The fleet ran but did not complete. See GET /tasks/{id}.",
+                    "task_id": record["task_id"],
+                    "error": str(exc)[:300],
+                },
+            ) from exc
+
+    body = public_task(record)
+    body["execution_mode"] = mode
+    return JSONResponse(status_code=202 if mode == "cloud_tasks" else 200, content=body)
 
 
 @app.get("/tasks/{task_id}")
@@ -643,13 +755,11 @@ async def get_task_status(
     task_id: str,
     ctx: AuthContext = Depends(authorize("task.read")),
 ):
-    raise HTTPException(
-        status_code=501,
-        detail={
-            "code": "not_implemented",
-            "message": "Task status is not yet available. This endpoint requires a durable worker.",
-        },
-    )
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    record = await repo.get_task_record(task_id)
+    if not record:
+        raise HTTPException(404, detail="Task not found in tenant scope")
+    return public_task(record)
 
 
 @app.get("/tasks")
@@ -657,13 +767,31 @@ async def list_tasks(
     cursor: Optional[str] = None,
     ctx: AuthContext = Depends(authorize("task.read")),
 ):
-    raise HTTPException(
-        status_code=501,
-        detail={
-            "code": "not_implemented",
-            "message": "Task listing is not yet available. This endpoint requires the durable task subsystem.",
-        },
-    )
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    items, next_cursor = await repo.list_tasks(limit=20, cursor_id=cursor)
+    return {"items": [public_task(t) for t in items], "next_cursor": next_cursor}
+
+
+@app.post("/tasks/execute")
+async def execute_fleet_task_worker(request: Request, payload: TaskExecuteSchema):
+    """Cloud Tasks callback. Secret-gated, not session-gated."""
+    _cloud_tasks_authorized(request)
+    record = await GlobalRepository().get_task_by_id(payload.task_id)
+    if not record:
+        raise HTTPException(404, detail="Task not found")
+    retry_header = request.headers.get("X-CloudTasks-TaskRetryCount", "0")
+    try:
+        attempt = int(retry_header) + 1
+    except ValueError:
+        attempt = 1
+    try:
+        updated = await execute_task(record["org_id"], record["tenant_id"], payload.task_id, attempt=attempt)
+        return {"status": updated.get("status"), "task_id": payload.task_id}
+    except Exception as exc:
+        if attempt >= 3:
+            return {"status": "failed", "task_id": payload.task_id, "error": str(exc)[:300]}
+        raise HTTPException(status_code=500, detail="fleet task retry") from exc
+
 
 # --- Tenants & Fleets ---
 @app.get("/tenants")

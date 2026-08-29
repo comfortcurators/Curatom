@@ -104,6 +104,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/memory', icon: Database, label: 'Memory Bank' },
       { path: '/directory', icon: BookOpen, label: 'Model Directory' },
       { path: '/playground', icon: TerminalSquare, label: 'Proving Ground' },
+      { path: '/task-worker-status', icon: Cpu, label: 'Fleet Runtime' },
+      { path: '/architecture', icon: Globe, label: 'Architecture' },
     ],
   },
 ];
@@ -166,7 +168,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     setRole(storedRole);
     setIsAgent(!!storedAtomKey);
 
-    if (!token && !storedAtomKey && location.pathname !== '/reception') {
+    if (!token && !storedAtomKey && location.pathname !== '/reception' && location.pathname !== '/architecture') {
       navigate('/reception');
     }
   }, [location, navigate]);
@@ -204,7 +206,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate('/reception');
   };
 
-  if (location.pathname === '/reception') {
+  if (location.pathname === '/reception' || location.pathname === '/architecture') {
     return <>{children}</>;
   }
 

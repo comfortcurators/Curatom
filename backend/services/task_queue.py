@@ -32,7 +32,7 @@ def _get_access_token() -> str:
     return _credentials.token
 
 
-async def enqueue_ingestion_task() -> None:
+async def _enqueue_http_task(queue: str, path: str, payload: dict, dispatch_deadline: str) -> None:
     if not settings.SERVICE_BASE_URL:
         raise RuntimeError(
             "SERVICE_BASE_URL is not set - cannot hand Cloud Tasks a callback target"
@@ -44,9 +44,10 @@ async def enqueue_ingestion_task() -> None:
 
     queue_path = (
         f"projects/{settings.PROJECT_ID}/locations/{settings.LOCATION}"
-        f"/queues/{settings.INGESTION_TASKS_QUEUE}"
+        f"/queues/{queue}"
     )
-    target_url = f"{settings.SERVICE_BASE_URL.rstrip('/')}/directory/ingest/execute"
+    target_url = f"{settings.SERVICE_BASE_URL.rstrip('/')}{path}"
+    body = base64.b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8")
 
     task = {
         "task": {
@@ -57,14 +58,9 @@ async def enqueue_ingestion_task() -> None:
                     "X-Ingestion-Task-Secret": settings.INGESTION_TASK_SECRET,
                     "Content-Type": "application/json",
                 },
-                "body": base64.b64encode(b"{}").decode("utf-8"),
+                "body": body,
             },
-            # Cloud Tasks' own default dispatch deadline is 600s - a second,
-            # independent ceiling from Cloud Run's request timeout (raised
-            # to 3600s for this service). Left at the default, Cloud Tasks
-            # would cut the connection at 10 minutes regardless of how long
-            # Cloud Run was willing to wait. 1800s is Cloud Tasks' own max.
-            "dispatchDeadline": "1800s",
+            "dispatchDeadline": dispatch_deadline,
         }
     }
 
@@ -76,3 +72,23 @@ async def enqueue_ingestion_task() -> None:
             json=task,
         )
         resp.raise_for_status()
+
+
+async def enqueue_ingestion_task() -> None:
+    await _enqueue_http_task(
+        queue=settings.INGESTION_TASKS_QUEUE,
+        path="/directory/ingest/execute",
+        payload={},
+        dispatch_deadline="1800s",
+    )
+
+
+async def enqueue_fleet_task(task_id: str) -> None:
+    """Dispatch a durable ADK fleet run. Dedicated queue, 10-minute deadline."""
+    queue = getattr(settings, "FLEET_TASKS_QUEUE", None) or "curatom-fleet-tasks"
+    await _enqueue_http_task(
+        queue=queue,
+        path="/tasks/execute",
+        payload={"task_id": task_id},
+        dispatch_deadline="600s",
+    )

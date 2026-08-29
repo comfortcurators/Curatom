@@ -235,6 +235,12 @@ export const Reception: React.FC = () => {
               <Building2 size={16} />
               New business — create your workspace
             </button>
+            <a
+              href="#/architecture"
+              className="block text-center text-11 font-mono text-ink-secondary hover:text-accent underline pt-8"
+            >
+              Architecture · live Google Cloud proof · no login required
+            </a>
           </div>
         )}
 
