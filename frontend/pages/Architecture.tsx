@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Cloud, ShieldCheck, Database, Cpu, Radio, Lock } from 'lucide-react';
+import { Cloud, ShieldCheck, Database, Cpu, Radio, Lock, Activity } from 'lucide-react';
 
 interface GcpProof {
   version?: string;
@@ -18,6 +18,9 @@ interface GcpProof {
     framework?: string;
     version?: string;
     agents?: string[];
+  };
+  model_armor?: {
+    engine?: string;
   };
   hackathon?: {
     category?: string;
@@ -145,6 +148,7 @@ export const Architecture: React.FC = () => {
               <div className="flex justify-between gap-12"><dt>Model</dt><dd className="text-ink-primary">{gc.model}</dd></div>
               <div className="flex justify-between gap-12"><dt>Cloud Tasks</dt><dd className="text-ink-primary">{gc.cloud_tasks_callback_configured ? 'configured' : 'inline fallback'}</dd></div>
               <div className="flex justify-between gap-12"><dt>ADK</dt><dd className="text-ink-primary">{fw?.framework} {fw?.version}</dd></div>
+              <div className="flex justify-between gap-12"><dt>Model Armor</dt><dd className="text-ink-primary">{proof?.model_armor?.engine || 'curatom-model-armor'}</dd></div>
             </dl>
           )}
           <a href="/ops/gcp-proof" className="text-12 font-mono text-accent underline" target="_blank" rel="noreferrer">
@@ -160,6 +164,8 @@ export const Architecture: React.FC = () => {
             <li className="flex gap-10"><Database size={14} className="text-accent mt-2 shrink-0" /> Memory Bank — Firestore 768-d vectors</li>
             <li className="flex gap-10"><Lock size={14} className="text-accent mt-2 shrink-0" /> Identity — per-atom keys, human sessions</li>
             <li className="flex gap-10"><ShieldCheck size={14} className="text-accent mt-2 shrink-0" /> Gateway — route authorize() + residency</li>
+            <li className="flex gap-10"><ShieldCheck size={14} className="text-accent mt-2 shrink-0" /> Model Armor — injection / tool-poison / PII screen</li>
+            <li className="flex gap-10"><Activity size={14} className="text-accent mt-2 shrink-0" /> Observability — reasoning chain on every fleet task</li>
           </ul>
           <Link to="/task-worker-status" className="text-12 font-mono text-accent underline">
             Run a durable fleet task →

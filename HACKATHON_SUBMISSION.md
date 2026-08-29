@@ -1,11 +1,29 @@
 # Curatom Enterprise — All Things Agentic submission
 
-**Category:** Fortified Enterprise Fleet  
-**Also eligible:** Startup Excellence (Comfort Curators Private Limited, CIN `U47912HR2026PTC144195`)
+**Category (pick ONE):** Fortified Enterprise Fleet  
+**Also tick:** Startup Excellence — Comfort Curators Private Limited, CIN `U47912HR2026PTC144195`, use a corporate email.
 
 ## Tagline
 
 A tenant-scoped agent registry with grounded, policy-aware memory recall — Google ADK fleet, Cloud Run, Firestore, Vertex AI Gemini 3.5.
+
+## Pre-existing work (required disclosure)
+
+The official rules require disclosure of code that existed before the Submission Period (3–31 Aug 2026).
+
+Curatom Enterprise is not a greenfield three-week prototype. rv0.2.0 is archived on Zenodo ([10.5281/zenodo.22112980](https://doi.org/10.5281/zenodo.22112980)). The pre-existing product is the tenant-scoped registry, policy engine, grounded recall, residency enforcement, and control-plane UI.
+
+**Built during this hackathon** for the Fortified Enterprise Fleet track:
+
+- Google ADK 2.8.0 fleet (`backend/agents/adk_fleet.py`) on Gemini 3.5 Flash / Vertex ADC
+- Durable Agent Runtime via Cloud Tasks (`POST /tasks` → `/tasks/execute`)
+- Live Cloud Run proof (`GET /ops/gcp-proof`, `/#/architecture`)
+- Model Armor first-party equivalent (prompt-injection / tool-poisoning / PII)
+- A2A-shaped Agent Cards (`GET /atoms/{id}/card`)
+- Reasoning-chain traces on every fleet task
+- Grounded decision writes from the fleet (the agent takes an action, not only a reply)
+
+We are not claiming the entire codebase was written in three weeks.
 
 ## Required stack (every track)
 
@@ -20,15 +38,17 @@ ADK catalog: `GET https://curatom.comfortcurators.io/v1/adk/catalog`
 
 ## Fortified Enterprise Fleet mapping
 
+First-party equivalents are accepted (Devpost organizer reply, 14 Aug 2026). Curatom maps the named subsystems onto capabilities we already enforce:
+
 | Subcomponent | Curatom surface |
 | --- | --- |
-| Agent Registry | `/atoms` — publish, version, discover, rotate keys |
+| Agent Registry | `/atoms` publish, version, discover, rotate keys + `GET /atoms/{id}/card` |
 | Agent Runtime | Google ADK orchestrator + Cloud Tasks `POST /tasks` → `/tasks/execute` |
 | Memory Bank | Firestore vector search, classification + residency filter, fail-closed |
 | Agent Identity | Human JWT sessions and per-atom API keys, never a client-supplied role |
 | Agent Gateway | `authorize()` on every non-ops route; policy simulation |
-| Model Armor | Classification/residency refusals, PII regex redaction, approval-gated writes |
-| Observability | `/audit`, `/logs`, `X-Request-Id`, `/metrics` |
+| Model Armor | Goal screening before dispatch; tool-arg sanitization; PII redaction; residency/classification 403s |
+| Observability | `/audit`, `/logs`, `X-Request-Id`, `/metrics`, reasoning chain on `GET /tasks/{id}` |
 
 ## Live demo
 
@@ -42,15 +62,17 @@ Public pages (incognito, no login):
 - `/ops/gcp-proof` — JSON proof of Cloud Run / Vertex / Firestore / ADK
 - `/readyz` — `{"status":"ready","database":"connected"}`
 
+Cloud proof in the video: the Architecture page, `/ops/gcp-proof`, **and** the live `https://curatom-backend-xoupwyyw3a-uc.a.run.app` URL in the address bar (acceptable proof per FAQ).
+
 ## Architecture diagram
 
 See `/#/architecture` on the live site (the source is `frontend/pages/Architecture.tsx`) and `docs/architecture.svg` in this repository.
 
 ## What is honestly still a prototype
 
-No SSO/OIDC or MFA. Password recovery is an in-app backup code, not an emailed magic link. PII detection is a regex heuristic. Resource-aware ABAC (field-level, time-based conditions) is not fully proven. We would rather write that here than have a judge find it.
+No SSO/OIDC or MFA. Password recovery is an in-app backup code, not an emailed magic link. PII and prompt-injection detection are heuristics, not Google's Model Armor product. Resource-aware ABAC (field-level, time-based conditions) is not fully proven. SequentialAgent was attempted and 429'd Vertex quota; the live fleet is one ADK Agent with the specialist tools. We would rather write that here than have a judge find it.
 
-Tenant isolation, route authorization, grounded recall, subject-erasure cascade, ADK fleet runtime, and Cloud Tasks dispatch are tested and live.
+Tenant isolation, route authorization, grounded recall, subject-erasure cascade, ADK fleet runtime, Cloud Tasks dispatch, Model Armor goal screening, and residency 403s are tested and live.
 
 ## Team
 
@@ -66,7 +88,8 @@ Copy these into the matching Devpost fields.
 
 **Tagline:** Tenant-scoped agent registry with policy-aware, residency-enforced memory recall — Google ADK on Gemini 3.5, Cloud Run, Firestore.
 
-**Category:** Fortified Enterprise Fleet (also eligible: Startup Excellence)
+**Category:** Fortified Enterprise Fleet  
+**Also select:** Startup Excellence Prize (incorporated org + corporate email)
 
 **Hosted project URL:** https://curatom.comfortcurators.io
 
@@ -81,4 +104,21 @@ Copy these into the matching Devpost fields.
 - Google ADK 2.8.0 fleet (`gateway`, `memory_specialist`, `fleet_orchestrator`). Proof: `GET /v1/adk/catalog`.
 - Cloud Run + Firestore (docs + 768-d vectors) + Cloud Tasks + Secret Manager.
 
-**Video beats (must be public, under 4 minutes):** start on `/#/architecture`, show `K_SERVICE` / `K_REVISION`, open `/ops/gcp-proof`, register a workspace, run a fleet task, show a residency 403.
+**Built during the Submission Period (disclose in the description):** ADK fleet, Cloud Tasks runtime, `/ops/gcp-proof`, architecture page, Model Armor screening, Agent Cards, reasoning-chain traces, grounded decision writes. Pre-existing: registry, policy engine, recall, UI (rv0.2.0 on Zenodo).
+
+**Video beats (must be public on YouTube or Vimeo, under 4 minutes, English):**
+1. Incognito: `/#/architecture` — Cloud Run service + revision.
+2. New tab: `/ops/gcp-proof` JSON, then the `.run.app` URL in the address bar.
+3. Register a workspace (not a shared password).
+4. Fleet Runtime: run the default goal. Show specialists, reasoning chain, any decision written.
+5. Click **Demonstrate Model Armor** — the jailbreak is refused, fleet does not run.
+6. Proving Ground: mismatch region, show residency 403 naming the region.
+
+**Bonus points you still own:**
+- Public blog/dev.to post: paste `docs/HACKATHON_BUILD.md`, must say it was created for this hackathon.
+- Social post with **#AllThingsAgenticHackathon** (X or LinkedIn). Draft below.
+- Optional Gemma/Veo/Lyria — not integrated; do not claim it.
+
+**X/LinkedIn draft:**
+
+Curatom is our Fortified Enterprise Fleet entry for Google Cloud's All Things Agentic hackathon. Tenant-scoped agent registry, Google ADK on Gemini 3.5, Cloud Run, Firestore, fail-closed residency. Live: https://curatom.comfortcurators.io  Architecture (no login): https://curatom.comfortcurators.io/#/architecture  #AllThingsAgenticHackathon

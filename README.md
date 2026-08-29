@@ -12,7 +12,10 @@ on.
 > **Release boundary:** rv0.3.0 is the All Things Agentic evaluation build.
 > SSO/OIDC and MFA are still absent. Durable fleet tasks now run (Google ADK
 > + Cloud Tasks). Identity is self-serve registration plus a demo Owner
-> account — not a production IdP.
+> account — not a production IdP. Curatom existed before this hackathon
+> (rv0.2.0 on Zenodo); the fleet runtime, live Cloud proof, Model Armor
+> screening, Agent Cards, and reasoning-chain traces were built during the
+> Submission Period — see `HACKATHON_SUBMISSION.md`.
 
 
 ## Implemented capabilities

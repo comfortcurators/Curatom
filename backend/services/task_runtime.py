@@ -14,6 +14,7 @@ import uuid
 from typing import Any, Dict, Optional, Tuple
 
 from core.security import AuthContext
+from services.model_armor import screen_prompt
 from services.repository import TenantScopedRepository
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,9 @@ def public_task(record: Dict[str, Any]) -> Dict[str, Any]:
         "framework": record.get("framework"),
         "model": record.get("model"),
         "attempt": record.get("attempt") or 0,
+        "events": record.get("events") or [],
+        "armor": record.get("armor"),
+        "decisions_written": record.get("decisions_written") or [],
     }
 
 
@@ -84,6 +88,7 @@ async def create_task(ctx: AuthContext, goal: str) -> Dict[str, Any]:
     repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
     task_id = f"task_{uuid.uuid4().hex}"
     now = _now()
+    armor = screen_prompt(goal)
     record = {
         "task_id": task_id,
         "goal": goal,
@@ -99,7 +104,27 @@ async def create_task(ctx: AuthContext, goal: str) -> Dict[str, Any]:
         "principal": principal_snapshot(ctx),
         "principal_id": ctx.principal_id,
         "attempt": 0,
+        "armor": armor,
+        "events": [],
+        "decisions_written": [],
     }
+    if not armor["allowed"]:
+        record["status"] = "denied"
+        record["error"] = armor["reason"]
+        record["completed_at"] = now
+        await repo.create_task_record(record)
+        await repo.write_audit_log(
+            {
+                "timestamp": now,
+                "actor": ctx.principal_id,
+                "action": "task.denied",
+                "resource": f"tasks/{task_id}",
+                "decision": "DENIED",
+                "details": {"threats": armor.get("threats"), "engine": armor.get("engine")},
+            }
+        )
+        return record
+
     await repo.create_task_record(record)
     await repo.write_audit_log(
         {
@@ -151,7 +176,7 @@ async def execute_task(
     record = await repo.get_task_record(task_id)
     if not record:
         raise KeyError(task_id)
-    if record.get("status") in {"completed"}:
+    if record.get("status") in {"completed", "denied"}:
         return record
 
     now = _now()
@@ -178,6 +203,7 @@ async def execute_task(
             "framework": result.get("framework"),
             "model": result.get("model"),
             "events": result.get("events") or [],
+            "decisions_written": result.get("decisions_written") or [],
             "updated_at": completed,
             "completed_at": completed,
             "error": None,
@@ -194,6 +220,7 @@ async def execute_task(
                 "details": {
                     "framework": result.get("framework"),
                     "steps": len(result.get("steps") or []),
+                    "decisions_written": len(result.get("decisions_written") or []),
                 },
             }
         )

@@ -49,6 +49,12 @@ absent. It is **not** a claim of a finished identity provider.
   calls `POST /tasks/execute` when `SERVICE_BASE_URL` and
   `INGESTION_TASK_SECRET` are set; otherwise the creating request runs the
   fleet inline. Retries stop after 3 attempts and mark the record failed.
+- Model Armor first-party equivalent (`backend/services/model_armor.py`):
+  prompt-injection / policy-bypass language is refused before Gemini runs;
+  tenant-scope keys are stripped from tool arguments; PII is the existing
+  heuristic. This is not Google's Model Armor product. A SequentialAgent of
+  specialists 429'd Vertex quota; the live path is one ADK Agent holding
+  those tools.
 - Live verification against project `rajvansh` on 2026-08-29 is recorded in
   `DEPLOYMENT_VERIFICATION.md` (Cloud Run revision `curatom-backend-00102-xvg`,
   Firestore indexes READY, Vertex AI Gemini 3.5, Cloud Tasks, residency 403,

@@ -21,6 +21,7 @@ from core.security import AuthContext, is_classification_permitted
 from services.directory_fetcher import embed_text
 from services.policy_engine import PolicyEngine
 from services.repository import TenantScopedRepository
+from services.model_armor import screen_prompt, sanitize_tool_args
 from core.config import settings, USE_VERTEX_AI
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ if USE_VERTEX_AI:
 
 
 _auth_ctx: contextvars.ContextVar[AuthContext] = contextvars.ContextVar("curatom_adk_auth")
+_writes: contextvars.ContextVar[List[Dict[str, Any]]] = contextvars.ContextVar("curatom_adk_writes")
 
 GEMINI_MODEL = "gemini-3.5-flash"
 APP_NAME = "curatom-enterprise-fleet"
@@ -61,7 +63,11 @@ JSON object with keys: plan_summary (string), steps (array of
 final_result (string), memory_references (array of memory ids).
 assigned_specialist must be one of: gateway, memory_specialist, orchestrator.
 status must be one of: completed, failed, denied.
-Do not invent memories, atoms, or policy decisions."""
+Do not invent memories, atoms, or policy decisions.
+If you formed a claim-backed conclusion from grounded memories, call
+record_grounded_decision so the tenant keeps a durable decision log
+entry — that is taking action, not just chatting. Cite the memory ids.
+If Model Armor or policy refuses, report the refusal exactly and stop."""
 
 
 def framework_status() -> Dict[str, Any]:
@@ -202,11 +208,66 @@ async def recall_grounded_memories(query: str) -> Dict[str, Any]:
     }
 
 
+async def screen_with_model_armor(text: str) -> Dict[str, Any]:
+    """Inline Model Armor: prompt-injection, tool-poisoning, PII heuristic."""
+    return screen_prompt(text)
+
+
+async def record_grounded_decision(
+    claim: str,
+    decision: str,
+    reasoning: str = "",
+    memory_ids: str = "",
+) -> Dict[str, Any]:
+    """Write a durable decision-log entry grounded on recalled memory ids.
+
+    This is a real write, not a chat reply. Policy is evaluated first.
+    memory_ids: comma-separated memory ids this conclusion cites.
+    """
+    ctx = _ctx()
+    policy = await PolicyEngine.evaluate(ctx, "decision.write", resource="decisions")
+    if not policy.get("allowed"):
+        return {
+            "status": "denied",
+            "reason": policy.get("reason"),
+            "deciding_policy_id": policy.get("deciding_policy_id"),
+        }
+    ids = [part.strip() for part in (memory_ids or "").split(",") if part.strip()]
+    if not ids:
+        return {
+            "status": "denied",
+            "reason": "A grounded decision must cite at least one memory id.",
+        }
+    cited = "Grounded on memories: " + ", ".join(ids)
+    full_reasoning = f"{reasoning}\n\n{cited}".strip() if reasoning else cited
+    repo = _repo()
+    record = await repo.create_decision(claim, decision, full_reasoning, ctx.principal_id)
+    await repo.write_audit_log(
+        {
+            "timestamp": record.get("recorded_at"),
+            "actor": ctx.principal_id,
+            "action": "decision.create",
+            "resource": f"decisions/{record['id']}",
+            "decision": "PERMITTED",
+            "details": {"source": "adk_fleet", "memory_ids": ids},
+        }
+    )
+    written = {"id": record["id"], "claim": claim, "decision": decision, "memory_ids": ids}
+    try:
+        bucket = _writes.get()
+        bucket.append(written)
+    except LookupError:
+        pass
+    return {"status": "written", **written}
+
+
 TOOLS = [
     check_policy,
     list_registered_atoms,
     get_business_context,
     recall_grounded_memories,
+    screen_with_model_armor,
+    record_grounded_decision,
 ]
 
 
@@ -233,6 +294,13 @@ def catalog() -> List[Dict[str, str]]:
             "model": GEMINI_MODEL,
             "framework": status["framework"],
             "instruction": "Sequences gateway then memory to complete a durable fleet task.",
+        },
+        {
+            "name": "model_armor",
+            "role": "Model Armor",
+            "model": "deterministic-heuristic",
+            "framework": status["framework"],
+            "instruction": "Prompt-injection, tool-poisoning, and PII screening before the fleet runs.",
         },
     ]
 
@@ -279,7 +347,15 @@ def _normalize_result(parsed: Dict[str, Any], raw_text: str, events: List[str]) 
         "events": events[-40:],
         "framework": framework_status()["framework"],
         "model": GEMINI_MODEL,
+        "decisions_written": list(_safe_writes()),
     }
+
+
+def _safe_writes() -> List[Dict[str, Any]]:
+    try:
+        return list(_writes.get() or [])
+    except LookupError:
+        return []
 
 
 async def _run_with_adk(goal: str, user_id: str) -> Dict[str, Any]:
@@ -295,8 +371,9 @@ async def _run_with_adk(goal: str, user_id: str) -> Dict[str, Any]:
         model=GEMINI_MODEL,
         instruction=(
             ORCHESTRATOR_INSTRUCTION
-            + "\nUse gateway tools (check_policy, list_registered_atoms) before "
-            "memory tools (recall_grounded_memories, get_business_context)."
+            + "\nUse gateway tools (check_policy, list_registered_atoms, screen_with_model_armor) before "
+            "memory tools (recall_grounded_memories, get_business_context). "
+            "After a grounded conclusion, call record_grounded_decision."
         ),
         description="ADK orchestrator for the Curatom enterprise fleet.",
         tools=TOOLS,
@@ -397,6 +474,29 @@ async def _run_with_genai(goal: str) -> Dict[str, Any]:
                 required=["query"],
             ),
         ),
+        types.FunctionDeclaration(
+            name="screen_with_model_armor",
+            description="Inline Model Armor: prompt-injection, tool-poisoning, PII heuristic.",
+            parameters=types.Schema(
+                type="OBJECT",
+                properties={"text": types.Schema(type="STRING")},
+                required=["text"],
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="record_grounded_decision",
+            description="Write a durable decision-log entry grounded on recalled memory ids.",
+            parameters=types.Schema(
+                type="OBJECT",
+                properties={
+                    "claim": types.Schema(type="STRING"),
+                    "decision": types.Schema(type="STRING"),
+                    "reasoning": types.Schema(type="STRING"),
+                    "memory_ids": types.Schema(type="STRING"),
+                },
+                required=["claim", "decision"],
+            ),
+        ),
     ]
     tool = types.Tool(function_declarations=declarations)
     contents: List[Any] = [
@@ -415,6 +515,8 @@ async def _run_with_genai(goal: str) -> Dict[str, Any]:
         "list_registered_atoms": list_registered_atoms,
         "get_business_context": get_business_context,
         "recall_grounded_memories": recall_grounded_memories,
+        "screen_with_model_armor": screen_with_model_armor,
+        "record_grounded_decision": record_grounded_decision,
     }
 
     last_text = ""
@@ -442,7 +544,8 @@ async def _run_with_genai(goal: str) -> Dict[str, Any]:
         fn_response_parts = []
         for call in fn_calls:
             name = call.name
-            args = dict(call.args or {})
+            args = sanitize_tool_args(dict(call.args or {}))
+            args.pop("_armor_dropped", None)
             events.append(f"orchestrator: tool {name}")
             fn = dispatch.get(name)
             if not fn:
@@ -460,6 +563,7 @@ async def _run_with_genai(goal: str) -> Dict[str, Any]:
 async def run_fleet(goal: str, ctx: AuthContext) -> Dict[str, Any]:
     """Run the ADK (or GenAI fallback) fleet against a goal for this principal."""
     token = _auth_ctx.set(ctx)
+    writes_token = _writes.set([])
     try:
         status = framework_status()
         if status["framework"] == "google-adk":
@@ -474,3 +578,4 @@ async def run_fleet(goal: str, ctx: AuthContext) -> Dict[str, Any]:
         return await _run_with_genai(goal)
     finally:
         _auth_ctx.reset(token)
+        _writes.reset(writes_token)

@@ -414,6 +414,17 @@ async def gcp_proof():
             "embedding_dimensions": 768,
         },
         "agent_framework": fw,
+        "model_armor": {
+            "engine": "curatom-model-armor",
+            "product": "first-party equivalent (not Google Model Armor)",
+            "guards": [
+                "prompt_injection",
+                "tool_poisoning",
+                "pii_redaction",
+                "classification",
+                "residency",
+            ],
+        },
         "proof": (
             "K_SERVICE/K_REVISION are injected only by Cloud Run. "
             "Firestore connectivity is a live read of the excerpts collection. "
@@ -432,6 +443,8 @@ async def public_adk_catalog():
             "create": "POST /tasks",
             "execute": "POST /tasks/execute (Cloud Tasks)",
             "status": "GET /tasks/{task_id}",
+            "agent_card": "GET /atoms/{atom_id}/card",
+            "model_armor": "goal screened before dispatch; tools cannot smuggle tenant scope",
         },
     }
 
@@ -728,6 +741,9 @@ async def create_autonomous_task(
         record = await create_task(ctx, payload.goal)
     except ValueError as exc:
         raise HTTPException(400, detail={"code": "invalid_goal", "message": str(exc)}) from exc
+
+    if record.get("status") == "denied":
+        return JSONResponse(status_code=200, content=public_task(record))
 
     record, mode = await dispatch_task(record)
     if mode == "inline":
@@ -1093,6 +1109,61 @@ async def list_atoms(
         for item in items:
             item["activity"] = activity.get(item["id"], {"calls_in_window": 0, "last_call_at": None})
     return {"items": items, "next_cursor": next_cursor}
+
+
+@app.get("/atoms/{atom_id}/card")
+async def get_atom_card(
+    atom_id: str,
+    ctx: AuthContext = Depends(authorize("atom.read")),
+):
+    """A2A-shaped Agent Card for cross-department discovery.
+
+    First-party equivalent of Gemini Enterprise Agent Registry's card.
+    Tenant-scoped: never a public dump of another workspace's agents.
+    """
+    repo = TenantScopedRepository(ctx.org_id, ctx.tenant_id)
+    atom = await repo.get_atom(atom_id)
+    if not atom:
+        raise HTTPException(404, "Atom not found in tenant scope")
+    profile = atom.get("profile") or {}
+    origin = settings.SERVICE_BASE_URL or "https://curatom.comfortcurators.io"
+    return {
+        "name": atom.get("name"),
+        "description": atom.get("description") or "",
+        "url": f"{origin}/#/registry",
+        "provider": {
+            "organization": "Comfort Curators Private Limited",
+            "url": "https://comfortcurator.com",
+        },
+        "version": str(profile.get("version") or 1),
+        "authentication": {"schemes": ["X-Atom-Key"]},
+        "defaultInputModes": ["text"],
+        "defaultOutputModes": [profile.get("format") or "YAML"],
+        "skills": [
+            {
+                "id": "grounded-recall",
+                "name": "Grounded recall",
+                "description": "Policy-filtered memory recall against this tenant's Firestore vectors.",
+                "tags": ["memory", "residency", "classification"],
+            },
+            {
+                "id": "fleet-runtime",
+                "name": "Fleet runtime",
+                "description": "Submit a durable Google ADK fleet goal via POST /tasks.",
+                "tags": ["adk", "cloud-tasks"],
+            },
+        ],
+        "metadata": {
+            "atom_id": atom.get("id"),
+            "model_family": atom.get("model_family"),
+            "status": atom.get("status"),
+            "role": atom.get("role"),
+            "permitted_regions": profile.get("permitted_regions"),
+            "classification_ceiling": profile.get("classification_ceiling"),
+            "fleet_id": atom.get("fleet_id"),
+        },
+    }
+
 
 class AtomTransitionSchema(BaseModel):
     transition: str
