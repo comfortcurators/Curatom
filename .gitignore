@@ -21,6 +21,9 @@ dist/
 .vite/
 *.tsbuildinfo
 
+# Built frontend copied into the FastAPI image (generated, not source)
+backend/static/
+
 # Firebase CLI local deploy cache
 .firebase/
 

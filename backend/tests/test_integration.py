@@ -221,6 +221,53 @@ def test_memory_visibility_enforces_classification_and_region():
     assert not _memory_is_visible_to(context, {"classification": "internal"})
 
 
+def test_recall_residency_refusal_is_explicit_403():
+    """A mismatched region must 403 with residency_denied — never an empty hit list."""
+    token = _owner_token()
+    atom = {
+        "id": "atom_sg",
+        "profile": {
+            "permitted_regions": ["SG"],
+            "classification_ceiling": "internal",
+            "retention_window_hours": 168,
+        },
+    }
+    memory = {
+        "id": "mem_eu",
+        "region": "EU",
+        "classification": "internal",
+        "content_redacted": "EU payroll policy.",
+        "topic": "payroll",
+        "created_at": "2026-08-29T00:00:00+00:00",
+        "version": 1,
+    }
+    with _without_stored_policies(), patch(
+        "main.rate_limiter.check_rate_limit", new=AsyncMock(return_value=None)
+    ), patch(
+        "main.rate_limiter.check_daily_quota", new=AsyncMock(return_value=None)
+    ), patch.object(
+        TenantScopedRepository, "get_atom", new=AsyncMock(return_value=atom)
+    ), patch.object(
+        TenantScopedRepository, "get_memory", new=AsyncMock(return_value=memory)
+    ), patch.object(
+        TenantScopedRepository, "write_audit_log", new=AsyncMock(return_value=None)
+    ):
+        response = client.post(
+            "/recall",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "atom_id": "atom_sg",
+                "memory_id": "mem_eu",
+                "query": "what is the payroll policy",
+            },
+        )
+    assert response.status_code == 403
+    body = response.json()["detail"]
+    assert body["code"] == "residency_denied"
+    assert "EU" in body["message"]
+    assert "SG" in body["message"]
+
+
 def test_firestore_vector_indexes_match_embedding_contract():
     import json
     from pathlib import Path

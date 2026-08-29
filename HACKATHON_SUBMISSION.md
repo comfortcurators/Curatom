@@ -55,3 +55,30 @@ Tenant isolation, route authorization, grounded recall, subject-erasure cascade,
 ## Team
 
 Comfort Curators Private Limited
+
+---
+
+## Devpost paste (fill the form, do not submit until the video is public)
+
+Copy these into the matching Devpost fields.
+
+**Project name:** Curatom Enterprise
+
+**Tagline:** Tenant-scoped agent registry with policy-aware, residency-enforced memory recall — Google ADK on Gemini 3.5, Cloud Run, Firestore.
+
+**Category:** Fortified Enterprise Fleet (also eligible: Startup Excellence)
+
+**Hosted project URL:** https://curatom.comfortcurators.io
+
+**GitHub repo:** https://github.com/comfortcurators/Curatom (public)
+
+**Testing instructions:** see `TESTING.md`. Judges register their own workspace. No shared password.
+
+**Architecture diagram:** upload `docs/architecture.svg`. The same diagram is live at https://curatom.comfortcurators.io/#/architecture with the running Cloud Run revision.
+
+**How we used the required stack:**
+- Gemini 3.5 Flash via Vertex AI (keyless ADC on Cloud Run). Proof: `GET /ops/gcp-proof`.
+- Google ADK 2.8.0 fleet (`gateway`, `memory_specialist`, `fleet_orchestrator`). Proof: `GET /v1/adk/catalog`.
+- Cloud Run + Firestore (docs + 768-d vectors) + Cloud Tasks + Secret Manager.
+
+**Video beats (must be public, under 4 minutes):** start on `/#/architecture`, show `K_SERVICE` / `K_REVISION`, open `/ops/gcp-proof`, register a workspace, run a fleet task, show a residency 403.

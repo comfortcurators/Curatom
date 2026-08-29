@@ -1,12 +1,11 @@
-# Curatom Enterprise rv0.2.0 — Hardening Status
+# Curatom Enterprise rv0.3.0 — Hardening Status
 
-This archive contains the reconciled security/correctness pass for controlled
-staging and open-source review. rv0.3.0 is the All Things Agentic evaluation
-build: ADK fleet runtime and durable tasks are live. SSO/OIDC and MFA are
-still absent. It is **not** a claim of a finished identity provider.
+This is the All Things Agentic evaluation build: Google ADK fleet runtime
+and durable Cloud Tasks are live on Cloud Run. SSO/OIDC and MFA are still
+absent. It is **not** a claim of a finished identity provider.
 
 
-## Implemented in rv0.2.0
+## Implemented
 
 - All Gemini generation and embedding calls made from asynchronous application
   paths use the Google Gen AI SDK asynchronous client.
@@ -38,38 +37,39 @@ still absent. It is **not** a claim of a finished identity provider.
   training data — verified against the live registry rather than assumed
   either way, and kept.
 - Every model call now targets `gemini-3.5-flash`, meeting the Gemini 3.5+
-  requirement. Nine call sites were updated (`main.py`, `taskmaster.py`,
-  `chat_handler.py`, `directory_fetcher.py`, `frontend/constants.ts`).
-- `backend/agents/adk_definitions.py` has been removed. It was an `httpx`
-  client against a `reasoningEngines` URL with an `agent_id` that nothing in
-  this repository ever provisioned, and it was dead code — nothing imported
-  it. There is no real Google Agent Development Kit integration in this
-  codebase. See below.
+  requirement.
+- Dead `backend/agents/adk_definitions.py` (an `httpx` client against an
+  unprovisioned `reasoningEngines` URL) was removed. Real Google Agent
+  Development Kit integration lives in `backend/agents/adk_fleet.py`
+  (`google-adk==2.8.0`) on `gemini-3.5-flash`. `GET /v1/adk/catalog` reports
+  the loaded framework. If `google-adk` cannot import, the same tools run
+  through a google-genai function-calling loop — still Gemini 3.5, never a
+  stub. `framework_status()` is the source of truth for which path is live.
+- Durable fleet tasks: `POST /tasks` writes a Firestore record and Cloud Tasks
+  calls `POST /tasks/execute` when `SERVICE_BASE_URL` and
+  `INGESTION_TASK_SECRET` are set; otherwise the creating request runs the
+  fleet inline. Retries stop after 3 attempts and mark the record failed.
+- Live verification against project `rajvansh` on 2026-08-29 is recorded in
+  `DEPLOYMENT_VERIFICATION.md` (Cloud Run revision `curatom-backend-00102-xvg`,
+  Firestore indexes READY, Vertex AI Gemini 3.5, Cloud Tasks, residency 403,
+  deny-all client rules).
+
 
 ## Still not production-ready
 
-1. **Identity:** this line previously said demo auth was one
-   environment-provisioned account, full stop - stale as of this write-up.
-   `POST /auth/register` is real, self-serve, rate-limited (5/min/IP), and
-   verified live against production: it creates a genuinely isolated tenant
-   and hands back a working session immediately, no founder involvement.
-   `POST /auth/recovery-code` / `/auth/recover` give an authenticated user a
-   real way to reset their own password. What's still missing, and is the
-   actual gap: no external identity provider (SSO/OIDC), no MFA, and
-   recovery is an in-app code rather than an emailed reset link - by design,
-   since email verification is best-effort and does not gate login
-   (`ZEPTOMAIL_TOKEN` unset means no email leaves the service, and
-   registration says so honestly rather than claiming otherwise). Session
-   revocation is JWT expiry only; there is no explicit sign-out-everywhere.
-2. **Durable tasks:** `/tasks` writes a Firestore record and runs the Google
-   ADK fleet. Cloud Tasks calls `POST /tasks/execute` when
-   `SERVICE_BASE_URL` and `INGESTION_TASK_SECRET` are set; otherwise the
-   creating request runs the fleet inline. Retries stop after 3 attempts and
-   mark the record failed. Dead-letter is that failed record, not a separate
-   queue.
-
-3. **ABAC coverage:** route-level authorization is now proven by automated
-   test (`test_route_authorization.py`) — every non-ops route carries an
+1. **Identity:** `POST /auth/register` is real, self-serve, rate-limited
+   (5/min/IP), and verified live against production: it creates a genuinely
+   isolated tenant and hands back a working session immediately. Password
+   recovery is an in-app backup code, not an emailed magic link. What's still
+   missing: no external identity provider (SSO/OIDC), no MFA, and session
+   revocation is JWT expiry only — there is no explicit sign-out-everywhere.
+   Email verification is best-effort and does not gate login (`ZEPTOMAIL_TOKEN`
+   unset means no email leaves the service, and registration says so honestly).
+2. **Durable-task dead-letter:** retries stop after 3 attempts and mark the
+   Firestore record failed. That failed record is the dead-letter; there is
+   no separate DLQ.
+3. **ABAC coverage:** route-level authorization is proven by automated test
+   (`test_route_authorization.py`) — every non-ops route carries an
    `authorize()` dependency and none reads a role from a client header. What
    remains unproven is *resource-aware* policy: field-level, time-based, and
    dynamic condition evaluation within each business operation.
@@ -79,30 +79,20 @@ still absent. It is **not** a claim of a finished identity provider.
 5. **PII governance:** regex detection/redaction is a staging heuristic.
 6. **Proxy trust:** the edge must overwrite `X-Forwarded-For`; direct exposure
    without a trusted-proxy policy is unsupported.
-7. **Live verification:** Cloud Run IAM/networking, Firestore indexes, Gemini
-   calls, and restore/incident procedures require a configured staging project.
-   `deploy.sh`, `firebase.json`, and `firestore.rules` now provision these,
-   and `DEPLOYMENT_VERIFICATION.md` lists the checks that close this item —
-   but its results table is still empty, so **this boundary remains open until
-   someone runs those checks against a real project and records the output.**
-8. **Google Agent Development Kit (ADK):** integrated. `backend/agents/adk_fleet.py`
-   defines a Gateway / Memory / Orchestrator fleet on `gemini-3.5-flash`.
-   `GET /v1/adk/catalog` reports the loaded framework. If `google-adk` cannot
-   import, the same tools run through a google-genai function-calling loop —
-   still Gemini 3.5, never a stub. `framework_status()` is the source of truth
-   for which path is live.
 
 
 ## Fail-closed configuration
 
 ```bash
 export PROJECT_ID="your-gcp-project"
-export API_KEY="<provider-key>"
 export JWT_SECRET="$(openssl rand -base64 48)"
 export DEMO_USERNAME="admin"
 export DEMO_PASSWORD="$(openssl rand -base64 32)"
 export FRONTEND_URL_PRODUCTION="https://your-frontend.example"
 ```
+
+`API_KEY` is optional. Inside Google Cloud, leave it unset so Gemini
+authenticates via Vertex AI Application Default Credentials.
 
 Do not commit these values. A successful syntax check or local build is not
 evidence that the external deployment boundary is secure.
