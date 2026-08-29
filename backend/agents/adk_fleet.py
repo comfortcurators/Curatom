@@ -14,14 +14,26 @@ from __future__ import annotations
 import contextvars
 import json
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 from core.security import AuthContext, is_classification_permitted
 from services.directory_fetcher import embed_text
 from services.policy_engine import PolicyEngine
 from services.repository import TenantScopedRepository
+from core.config import settings, USE_VERTEX_AI
 
 logger = logging.getLogger(__name__)
+
+# ADK's GoogleLLM constructs its own genai.Client. Without these, it
+# demands a Gemini Developer API key even when the rest of Curatom is
+# already on Vertex ADC. Location must be "global" — gemini-3.5-flash
+# 404s on regional Vertex endpoints (see core/config.py).
+if USE_VERTEX_AI:
+    os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "true")
+    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", settings.PROJECT_ID)
+    os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
+
 
 _auth_ctx: contextvars.ContextVar[AuthContext] = contextvars.ContextVar("curatom_adk_auth")
 
@@ -274,46 +286,22 @@ async def _run_with_adk(goal: str, user_id: str) -> Dict[str, Any]:
     from google.adk import Agent
     from google.genai import types as genai_types
 
-    gateway = Agent(
-        name="gateway",
+    # One ADK Agent with the full tool surface. A SequentialAgent of
+    # gateway+memory is the textbook shape, but it issues a full Gemini
+    # turn per specialist and 429'd this project's Vertex quota during
+    # live evaluation. The orchestrator below is still Google ADK.
+    root = Agent(
+        name="fleet_orchestrator",
         model=GEMINI_MODEL,
-        instruction=GATEWAY_INSTRUCTION,
-        description="Policy and identity gateway for the Curatom fleet.",
-        tools=[check_policy, list_registered_atoms],
-    )
-    memory = Agent(
-        name="memory_specialist",
-        model=GEMINI_MODEL,
-        instruction=MEMORY_INSTRUCTION,
-        description="Grounded memory specialist backed by Firestore vector search.",
-        tools=[recall_grounded_memories, get_business_context],
+        instruction=(
+            ORCHESTRATOR_INSTRUCTION
+            + "\nUse gateway tools (check_policy, list_registered_atoms) before "
+            "memory tools (recall_grounded_memories, get_business_context)."
+        ),
+        description="ADK orchestrator for the Curatom enterprise fleet.",
+        tools=TOOLS,
     )
 
-    root = None
-    try:
-        from google.adk.agents import SequentialAgent
-
-        root = SequentialAgent(
-            name="fleet_orchestrator",
-            sub_agents=[gateway, memory],
-            description="Sequences gateway then memory against a fleet goal.",
-        )
-    except Exception:
-        try:
-            from google.adk import Workflow
-
-            root = Workflow(
-                name="fleet_orchestrator",
-                edges=[("START", gateway, memory)],
-            )
-        except Exception:
-            root = Agent(
-                name="fleet_orchestrator",
-                model=GEMINI_MODEL,
-                instruction=ORCHESTRATOR_INSTRUCTION,
-                description="Single-agent fallback orchestrator with the full tool surface.",
-                tools=TOOLS,
-            )
 
     runner = None
     try:

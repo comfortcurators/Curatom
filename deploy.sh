@@ -173,7 +173,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --service-account "${SERVICE_ACCOUNT_EMAIL}" \
   --allow-unauthenticated \
   --timeout=3600 \
-  --set-env-vars "PROJECT_ID=${PROJECT_ID},LOCATION=${REGION},DEMO_USERNAME=${DEMO_USERNAME},FRONTEND_URL_PRODUCTION=https://curatom.comfortcurators.io,FLEET_TASKS_QUEUE=curatom-fleet-tasks,INGESTION_TASKS_QUEUE=directory-ingestion" \
+  --set-env-vars "PROJECT_ID=${PROJECT_ID},LOCATION=${REGION},DEMO_USERNAME=${DEMO_USERNAME},FRONTEND_URL_PRODUCTION=https://curatom.comfortcurators.io,FLEET_TASKS_QUEUE=curatom-fleet-tasks,INGESTION_TASKS_QUEUE=directory-ingestion,GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=global" \
   --set-secrets "${GEMINI_SECRET_ARG}${ZEPTO_SECRET_ARG}JWT_SECRET=curatom-jwt-secret:latest,DEMO_PASSWORD=curatom-demo-password:latest,INGESTION_TASK_SECRET=curatom-ingestion-task-secret:latest"
 
 BACKEND_URL="$(gcloud run services describe "${SERVICE_NAME}" \
