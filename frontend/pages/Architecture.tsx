@@ -142,6 +142,12 @@ export const Architecture: React.FC = () => {
           <text x="32" y="498" fill="#9a988f" fontFamily="Inter, sans-serif" fontSize="12">Model Armor is a regex/heuristic in-process. Jailbreak goals are denied before Gemini runs.</text>
           <text x="32" y="518" fill="#9a988f" fontFamily="Inter, sans-serif" fontSize="12">Task record is in Firestore first. Cloud Tasks is the CPU callback. If the queue is unbound, the same fleet runs inline.</text>
         </svg>
+        <div className="flex flex-wrap gap-12 mt-16 text-12 font-mono">
+          <a href="/kit/curatom-architecture.png" className="text-accent hover:underline" target="_blank" rel="noreferrer">Download PNG</a>
+          <a href="/kit/curatom-architecture.svg" className="text-accent hover:underline" target="_blank" rel="noreferrer">Download SVG</a>
+          <a href="/kit/curatom-product-overview.mp4" className="text-accent hover:underline" target="_blank" rel="noreferrer">Product overview (MP4)</a>
+          <a href="/kit/curatom-overview-kit.zip" className="text-accent hover:underline" target="_blank" rel="noreferrer">Zip of all three</a>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-16">

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-label="Curatom architecture as it actually runs">
+  <rect width="960" height="540" fill="#0a0a0c"/>
+  <text x="32" y="32" fill="#c7c7cc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing="2.4">GOOGLE CLOUD · CURATOM rv0.3.0 · WHAT ACTUALLY RUNS</text>
+
+  <!-- clients -->
+  <rect x="32" y="56" width="176" height="64" rx="8" fill="#1c1c1e" stroke="#3a3a3c"/>
+  <text x="48" y="82" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">Human</text>
+  <text x="48" y="102" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">session JWT</text>
+
+  <rect x="32" y="132" width="176" height="64" rx="8" fill="#1c1c1e" stroke="#3a3a3c"/>
+  <text x="48" y="158" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">Agent</text>
+  <text x="48" y="178" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">X-Atom-Key</text>
+
+  <!-- cloud run -->
+  <rect x="248" y="56" width="428" height="368" rx="12" fill="#1c1c1e" stroke="#48484a"/>
+  <text x="268" y="80" fill="#c7c7cc" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1.8">CLOUD RUN · one service</text>
+  <text x="268" y="100" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="14">FastAPI + React</text>
+  <text x="268" y="118" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">curatom-backend · us-central1</text>
+
+  <rect x="268" y="136" width="388" height="44" rx="6" fill="#2c2c2e" stroke="#3a3a3c"/>
+  <text x="284" y="163" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">1  authorize() · JWT or atom key. No SSO.</text>
+
+  <rect x="268" y="190" width="388" height="44" rx="6" fill="#2c2c2e" stroke="#3a3a3c"/>
+  <text x="284" y="217" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">2  Model Armor · our heuristic, not Google’s product</text>
+
+  <rect x="268" y="244" width="388" height="44" rx="6" fill="#2c2c2e" stroke="#3a3a3c"/>
+  <text x="284" y="271" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">3  Policy + residency · 403 by name, never empty</text>
+
+  <rect x="268" y="302" width="186" height="100" rx="6" fill="#2c2c2e" stroke="#3a3a3c"/>
+  <text x="284" y="326" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">REST</text>
+  <text x="284" y="348" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">registry · memory</text>
+  <text x="284" y="366" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">recall · decisions</text>
+  <text x="284" y="384" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">all tenant-scoped</text>
+
+  <rect x="466" y="302" width="190" height="100" rx="6" fill="#2c2c2e" stroke="#3a3a3c"/>
+  <text x="482" y="326" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">Fleet</text>
+  <text x="482" y="348" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">one ADK Agent</text>
+  <text x="482" y="366" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">tools, not a chain</text>
+  <text x="482" y="384" fill="#9a988f" font-family="ui-monospace, monospace" font-size="11">POST /tasks</text>
+
+  <!-- gcp -->
+  <rect x="716" y="56" width="212" height="80" rx="8" fill="#1c1c1e" stroke="#3a3a3c"/>
+  <text x="732" y="82" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">Vertex AI</text>
+  <text x="732" y="102" fill="rgba(245,245,247,.72)" font-family="Inter, system-ui, sans-serif" font-size="12">gemini-3.5-flash</text>
+  <text x="732" y="120" fill="#9a988f" font-family="ui-monospace, monospace" font-size="10">ADC · location=global</text>
+
+  <rect x="716" y="148" width="212" height="80" rx="8" fill="#1c1c1e" stroke="#3a3a3c"/>
+  <text x="732" y="174" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">Firestore</text>
+  <text x="732" y="194" fill="rgba(245,245,247,.72)" font-family="Inter, system-ui, sans-serif" font-size="12">docs + 768-d vectors</text>
+  <text x="732" y="212" fill="#9a988f" font-family="ui-monospace, monospace" font-size="10">gemini-embedding-001</text>
+
+  <rect x="716" y="240" width="212" height="80" rx="8" fill="#1c1c1e" stroke="#3a3a3c"/>
+  <text x="732" y="266" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">Cloud Tasks</text>
+  <text x="732" y="286" fill="rgba(245,245,247,.72)" font-family="Inter, system-ui, sans-serif" font-size="12">POST /tasks/execute</text>
+  <text x="732" y="304" fill="#9a988f" font-family="ui-monospace, monospace" font-size="10">else the request runs inline</text>
+
+  <rect x="716" y="332" width="212" height="80" rx="8" fill="#1c1c1e" stroke="#3a3a3c"/>
+  <text x="732" y="358" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="13">Secret Manager</text>
+  <text x="732" y="378" fill="rgba(245,245,247,.72)" font-family="Inter, system-ui, sans-serif" font-size="12">JWT · worker secret</text>
+  <text x="732" y="396" fill="#9a988f" font-family="ui-monospace, monospace" font-size="10">not plaintext env</text>
+
+  <!-- arrows -->
+  <path d="M208 88 H248" stroke="#c7c7cc" stroke-width="1.2"/>
+  <path d="M208 164 H248" stroke="#c7c7cc" stroke-width="1.2"/>
+  <path d="M676 96 H716" stroke="#c7c7cc" stroke-width="1.2"/>
+  <path d="M676 188 H716" stroke="#c7c7cc" stroke-width="1.2"/>
+  <path d="M676 280 H716" stroke="#c7c7cc" stroke-width="1.2"/>
+  <path d="M676 372 H716" stroke="#c7c7cc" stroke-width="1.2"/>
+
+  <text x="32" y="456" fill="#c7c7cc" font-family="Inter, system-ui, sans-serif" font-size="12">Honest, not the slide.</text>
+  <text x="32" y="478" fill="#9a988f" font-family="Inter, system-ui, sans-serif" font-size="12">SequentialAgent 429’d Vertex quota. Live fleet is one google-adk Agent holding gateway / memory / decision tools.</text>
+  <text x="32" y="498" fill="#9a988f" font-family="Inter, system-ui, sans-serif" font-size="12">Model Armor is a regex/heuristic in-process. Jailbreak goals are denied before Gemini runs.</text>
+  <text x="32" y="518" fill="#9a988f" font-family="Inter, system-ui, sans-serif" font-size="12">Task record is in Firestore first. Cloud Tasks is the CPU callback. If the queue is unbound, the same fleet runs inline.</text>
+</svg>
