@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Shield, Code, Eye, Briefcase, Cpu, ArrowRight, Loader2, FileSearch, Lock, Building2, KeyRound } from 'lucide-react';
-import { Role, AtomProfile } from '../types';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Shield, Cpu, ArrowRight, Loader2, Lock, Building2, KeyRound } from 'lucide-react';
+import { AtomProfile } from '../types';
 import { APP_NAME, COMPANY_LEGAL_NAME } from '../constants';
 import { api } from '../api';
 // WovenLocusField is now mounted once at the app root (App.tsx), beneath
@@ -9,12 +9,12 @@ import { api } from '../api';
 
 export const Reception: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<'select' | 'human' | 'agent' | 'register' | 'recover' | 'verify-email'>('select');
 
   // Human Auth State
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<string>('Tech Lead');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -48,6 +48,12 @@ export const Reception: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [inferredProfile, setInferredProfile] = useState<{profile: AtomProfile, sources: any[]} | null>(null);
   const [agentName, setAgentName] = useState('');
+
+  useEffect(() => {
+    if (searchParams.get('start') === 'register') {
+      setMode('register');
+    }
+  }, [searchParams]);
 
   const handleHumanLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,9 +209,23 @@ export const Reception: React.FC = () => {
       <div className="glass relative z-10 rounded-lg p-32 w-full max-w-xl">
         {mode === 'select' && (
           <div className="space-y-16">
-            <h2 className="text-15 font-medium text-ink-primary mb-24 text-center font-display">
-              Sign in to Curatom
+            <h2 className="text-15 font-medium text-ink-primary mb-8 text-center font-display">
+              Start here
             </h2>
+            <button
+              onClick={() => setMode('register')}
+              className="w-full flex items-center justify-center gap-8 px-16 py-12 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md text-14 font-medium transition-colors"
+            >
+              <Building2 size={16} />
+              Create your workspace
+            </button>
+            <p className="text-11 text-ink-secondary font-mono text-center">
+              Isolated tenant. No shared demo data. You become the Owner.
+            </p>
+
+            <p className="text-11 font-mono text-ink-secondary text-center uppercase tracking-wider pt-8">
+              or sign in
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
               <button
                 onClick={() => setMode('human')}
@@ -228,13 +248,6 @@ export const Reception: React.FC = () => {
                 </div>
               </button>
             </div>
-            <button
-              onClick={() => setMode('register')}
-              className="w-full flex items-center justify-center gap-8 p-16 rounded-md border border-dashed border-surface-400 hover:border-accent hover:text-accent text-ink-secondary transition-all text-13 font-medium"
-            >
-              <Building2 size={16} />
-              New business — create your workspace
-            </button>
             <a
               href="#/architecture"
               className="block text-center text-11 font-mono text-ink-secondary hover:text-accent underline pt-8"
@@ -457,7 +470,7 @@ export const Reception: React.FC = () => {
               <button
                 type="submit"
                 disabled={regLoading}
-                className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-accent hover:bg-accent/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
               >
                 {regLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                 Create Workspace & Sign In
@@ -515,7 +528,7 @@ export const Reception: React.FC = () => {
               <button
                 type="submit"
                 disabled={verifyLoading}
-                className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-accent hover:bg-accent/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded text-13 font-medium transition-colors disabled:opacity-50"
               >
                 {verifyLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                 Verify
@@ -568,7 +581,7 @@ export const Reception: React.FC = () => {
                 <button
                   onClick={handleAgentIdentify}
                   disabled={loading || (!agentHint && !agentSample)}
-                  className="w-full flex justify-center items-center gap-8 px-16 py-10 bg-surface-300 hover:bg-surface-400 text-ink-primary rounded-md transition-colors text-13 font-medium disabled:opacity-50"
+                  className="w-full flex justify-center items-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md transition-colors text-13 font-medium disabled:opacity-50"
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : <Cpu size={16} />}
                   Look Up Settings
@@ -612,7 +625,7 @@ export const Reception: React.FC = () => {
                 <button
                   onClick={handleAgentRegister}
                   disabled={loading || !agentName}
-                  className="w-full flex justify-center items-center gap-8 px-16 py-10 bg-accent hover:bg-accent/90 text-canvas rounded-md transition-colors text-13 font-medium disabled:opacity-50"
+                  className="w-full flex justify-center items-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md transition-colors text-13 font-medium disabled:opacity-50"
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                   Connect & Get Key

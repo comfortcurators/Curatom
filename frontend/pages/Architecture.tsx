@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Cloud, ShieldCheck, Database, Cpu, Radio, Lock, Activity } from 'lucide-react';
+import { Cloud, ShieldCheck, Database, Cpu, Radio, Lock, Activity, ArrowRight } from 'lucide-react';
 
 interface GcpProof {
   version?: string;
@@ -45,18 +45,26 @@ export const Architecture: React.FC = () => {
   return (
     <div className="space-y-24 max-w-5xl mx-auto py-24 px-16">
       <div className="flex items-center justify-between gap-16">
-        <a href="#/reception" className="text-12 font-mono text-ink-secondary hover:text-accent">
+        <Link to="/reception" className="text-12 font-mono text-ink-secondary hover:text-accent">
           ← Sign in
-        </a>
+        </Link>
         <p className="label-caps text-11">All Things Agentic · Fortified Enterprise Fleet</p>
       </div>
-      <div className="border-b border-surface-300 pb-16">
-        <h1 className="font-display text-32 text-ink-primary">Architecture</h1>
-        <p className="text-13 text-ink-secondary mt-8 font-prose max-w-2xl">
-          Curatom is a tenant-scoped agent registry with policy-aware, residency-enforced, grounded
-          memory recall. The diagram below is the running system — not a slide. Live Google Cloud
-          evidence is loaded from this same origin.
-        </p>
+      <div className="border-b border-surface-300 pb-16 flex flex-col md:flex-row md:items-end md:justify-between gap-16">
+        <div>
+          <h1 className="font-display text-32 text-ink-primary">Architecture</h1>
+          <p className="text-13 text-ink-secondary mt-8 font-prose max-w-2xl">
+            Curatom is a tenant-scoped agent registry with policy-aware, residency-enforced, grounded
+            memory recall. The diagram below is the running system — not a slide. Live Google Cloud
+            evidence is loaded from this same origin.
+          </p>
+        </div>
+        <Link
+          to="/reception?start=register"
+          className="flex items-center justify-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md text-13 font-medium shrink-0"
+        >
+          Create a workspace <ArrowRight size={14} />
+        </Link>
       </div>
 
       <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-16 overflow-x-auto">
@@ -167,9 +175,20 @@ export const Architecture: React.FC = () => {
             <li className="flex gap-10"><ShieldCheck size={14} className="text-accent mt-2 shrink-0" /> Model Armor — injection / tool-poison / PII screen</li>
             <li className="flex gap-10"><Activity size={14} className="text-accent mt-2 shrink-0" /> Observability — reasoning chain on every fleet task</li>
           </ul>
-          <Link to="/task-worker-status" className="text-12 font-mono text-accent underline">
-            Run a durable fleet task →
-          </Link>
+          <div className="flex flex-wrap gap-8 pt-4">
+            <Link
+              to="/task-worker-status"
+              className="flex items-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md text-13 font-medium"
+            >
+              Run a durable fleet task
+            </Link>
+            <Link
+              to="/reception?start=register"
+              className="px-16 py-10 border border-surface-400 hover:border-accent text-ink-secondary hover:text-accent rounded-md text-13 font-medium"
+            >
+              Create a workspace first
+            </Link>
+          </div>
         </div>
       </div>
     </div>

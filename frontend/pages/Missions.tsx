@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Play, Loader2, ShieldCheck, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { api } from '../api';
 import { AutonomousTask } from '../types';
@@ -176,6 +177,28 @@ export const Missions: React.FC = () => {
               </li>
             ))}
           </ul>
+          {(active.status === 'completed' || active.status === 'denied' || active.status === 'failed') && (
+            <div className="flex flex-wrap gap-8 pt-8">
+              <Link
+                to="/decisions"
+                className="px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded text-13 font-medium"
+              >
+                Open Decision Log
+              </Link>
+              <Link
+                to="/memory?add=1"
+                className="px-16 py-10 border border-surface-400 hover:border-accent text-ink-secondary hover:text-accent rounded text-13 font-medium"
+              >
+                Add another memory
+              </Link>
+              <Link
+                to="/playground"
+                className="px-16 py-10 border border-surface-400 hover:border-accent text-ink-secondary hover:text-accent rounded text-13 font-medium"
+              >
+                Test a recall
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
@@ -184,9 +207,9 @@ export const Missions: React.FC = () => {
           <ShieldCheck size={16} className="text-accent" />
           <h2 className="text-15 font-medium">Recent tasks</h2>
         </div>
-        {tasks.length === 0 && (
-          <p className="text-13 text-ink-secondary font-prose">None yet in this tenant.</p>
-        )}
+          {tasks.length === 0 && (
+            <p className="text-13 text-ink-secondary font-prose">None yet in this tenant. Submit a goal above.</p>
+          )}
         <ul className="space-y-8">
           {tasks.map((t) => (
             <li key={t.task_id}>

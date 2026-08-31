@@ -39,6 +39,7 @@ export const Registry: React.FC = () => {
     try {
       const data = await api.getAtoms();
       setAtoms(data.items);
+      if (data.items.length === 0) setAddOpen(true);
     } catch (e) {
       console.error(e);
     } finally {
@@ -144,8 +145,17 @@ export const Registry: React.FC = () => {
           <Loader2 className="animate-spin" size={24} />
         </div>
       ) : atoms.length === 0 ? (
-        <div className="text-center py-48 text-ink-secondary text-13 font-prose bg-surface-100 border border-surface-300 rounded-lg">
-          No agents connected yet. Connect one from the Overview page.
+        <div className="text-center py-48 text-ink-secondary text-13 font-prose bg-surface-100 border border-surface-300 rounded-lg space-y-16">
+          <p>No agents connected yet.</p>
+          {!addOpen && (
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md text-13 font-medium"
+            >
+              <Plus size={15} /> Connect an agent
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-20">

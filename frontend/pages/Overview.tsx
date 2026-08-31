@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, AlertTriangle, Bot, MessageCircleQuestion, Loader2, Pencil, Copy, Check, KeyRound, Camera, ChevronDown } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Bot, MessageCircleQuestion, Loader2, Pencil, Copy, Check, KeyRound, Camera, ChevronDown, Database, Cpu, TerminalSquare } from 'lucide-react';
 import { api } from '../api';
 import { BusinessContext } from '../types';
 import { BusinessContextForm } from '../components/BusinessContextForm';
@@ -107,6 +107,7 @@ export const Overview: React.FC = () => {
   // this is only for the rare "what does the AI actually see" check.
   const [showContext, setShowContext] = useState(false);
   const [agentCount, setAgentCount] = useState<number | null>(null);
+  const [memoryCount, setMemoryCount] = useState<number | null>(null);
   const [questionsToday, setQuestionsToday] = useState<number | null>(null);
   const [issue, setIssue] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -118,12 +119,14 @@ export const Overview: React.FC = () => {
       setContext(ctxRes.onboarded ? ctxRes.context : null);
 
       if (ctxRes.onboarded) {
-        const [atoms, logs, audit] = await Promise.all([
+        const [atoms, logs, audit, memories] = await Promise.all([
           api.getAtoms(undefined, 200),
           api.getLogs(undefined, 200),
           api.getAuditTrail(undefined, 20),
+          api.getMemories(undefined, undefined, 50),
         ]);
         setAgentCount(atoms.items.length);
+        setMemoryCount(memories.items.length);
         const today = new Date().toDateString();
         setQuestionsToday(logs.items.filter((l) => new Date(l.timestamp).toDateString() === today).length);
         const deniedRecently = audit.items.find((a) => a.action.includes('denied'));
@@ -180,6 +183,13 @@ export const Overview: React.FC = () => {
     { label: 'Questions answered today', value: questionsToday === null ? '—' : String(questionsToday), icon: MessageCircleQuestion },
   ];
 
+  const nextHint =
+    agentCount === 0
+      ? 'Connect an agent, add a memory, then run the fleet.'
+      : memoryCount === 0
+        ? 'Add a grounded memory so the fleet has something to cite.'
+        : 'Run the ADK fleet, or prove a recall against residency rules.';
+
   return (
     <div className="max-w-3xl mx-auto space-y-24">
       <div className="flex items-start justify-between gap-16">
@@ -211,10 +221,39 @@ export const Overview: React.FC = () => {
             <CheckCircle2 size={28} className="text-accent shrink-0" />
             <div>
               <div className="text-16 text-ink-primary font-medium">Everything is running normally</div>
-              <div className="text-13 text-ink-secondary font-prose">Nothing needs your attention right now.</div>
+              <div className="text-13 text-ink-secondary font-prose">{nextHint}</div>
             </div>
           </>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-12">
+        <Link
+          to="/memory?add=1"
+          className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20 flex flex-col gap-10 hover:bg-surface-200 hover:border-accent/40 transition-colors"
+        >
+          <Database size={18} className="text-accent" />
+          <div className="text-14 text-ink-primary font-medium">Add a memory</div>
+          <div className="text-12 text-ink-secondary font-prose">
+            {memoryCount === 0 ? 'None yet — the fleet needs a fact it can cite.' : `${memoryCount} on file. Add another.`}
+          </div>
+        </Link>
+        <Link
+          to="/task-worker-status"
+          className="bg-ink-primary text-canvas rounded-lg card-elevated p-20 flex flex-col gap-10 hover:bg-ink-primary/90 transition-colors"
+        >
+          <Cpu size={18} />
+          <div className="text-14 font-medium">Run the ADK fleet</div>
+          <div className="text-12 opacity-80 font-prose">Durable Cloud Tasks runtime. Model Armor screens first.</div>
+        </Link>
+        <Link
+          to="/playground"
+          className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-20 flex flex-col gap-10 hover:bg-surface-200 hover:border-accent/40 transition-colors"
+        >
+          <TerminalSquare size={18} className="text-accent" />
+          <div className="text-14 text-ink-primary font-medium">Test a recall</div>
+          <div className="text-12 text-ink-secondary font-prose">Prove residency fail-closed against a real record.</div>
+        </Link>
       </div>
 
       {agentCount === 0 && <RegisterAtomForm title="Connect your first AI agent" onConnected={load} />}
