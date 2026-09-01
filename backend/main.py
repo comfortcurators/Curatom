@@ -2020,7 +2020,27 @@ async def get_business_context(ctx: AuthContext = Depends(authorize("context.rea
         key_label = f"'{atom.get('name')}' ({atom.get('model_family')})" if atom else "this key"
         if context:
             business = context.get('business_name') or 'this business'
-            if ctx.requires_approval:
+            # This used to branch on ctx.requires_approval alone, and had the
+            # two messages backwards relative to what PolicyEngine actually
+            # enforces: requires_approval=False is documented (see
+            # AtomRegisterSchema) to mean *read-only*, not "trusted to write
+            # directly" - so a plain key was being told it could write when
+            # every PUT /context it ever sent would 403. Found live: a real
+            # atom key with requires_approval=False got the "trusted to
+            # write directly" greeting, then a real PUT /context came back
+            # policy_denied. Ask the same PolicyEngine that enforces the
+            # write instead of re-deriving the answer from one flag, so this
+            # can't drift out of sync with reality again - a tenant-stored
+            # allow policy (not modeled by requires_approval at all) is a
+            # third real case this now covers correctly too.
+            write_decision = await PolicyEngine.evaluate(ctx, "context.write")
+            if not write_decision["allowed"]:
+                write_line = (
+                    f"This key is read-only for {business}'s White Paper - PUT /context will be "
+                    f"denied. Ask a human operator at {business} to grant this key write access "
+                    f"if it needs to propose changes."
+                )
+            elif ctx.requires_approval:
                 write_line = (
                     f"You may propose changes to {business}'s White Paper with PUT /context, "
                     f"but nothing you write takes effect until a human at {business} approves it - "

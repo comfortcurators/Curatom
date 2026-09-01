@@ -682,6 +682,67 @@ def test_fleet_health_does_not_fabricate_an_error_rate():
     assert body["error_rate_pct"] is None
 
 
+def test_agent_context_greeting_never_claims_write_trust_it_does_not_have():
+    # Live-found bug: an agent key registered with requires_approval=False
+    # got told "You're trusted to write directly - no approval step", then
+    # a real PUT /context came back policy_denied - because
+    # requires_approval=False is documented (AtomRegisterSchema) to mean
+    # *read-only*, not direct trust. The greeting branched on the flag
+    # instead of asking PolicyEngine, and had the two cases backwards.
+    # This grounds the fix: whatever the greeting claims must match what
+    # PolicyEngine.evaluate actually decides for context.write, for every
+    # combination of requires_approval and stored-policy state.
+    context = AuthContext(
+        principal_id="atom_plain",
+        principal_type="agent",
+        org_id="org_test",
+        tenant_id="tenant_test",
+        role="Agent",
+        permitted_regions=["IN"],
+        classification_ceiling="restricted",
+        requires_approval=False,
+    )
+    app.dependency_overrides[resolve_auth] = lambda: context
+    stored_context = {"business_name": "Acme", "what_you_do": "Widgets.", "version": 1}
+    atom_doc = {"name": "plain-key", "model_family": "gemini"}
+    try:
+        with _no_stored_policies(), \
+             patch.object(TenantScopedRepository, "get_business_context", new=AsyncMock(return_value=stored_context)), \
+             patch.object(TenantScopedRepository, "get_atom", new=AsyncMock(return_value=atom_doc)), \
+             patch.object(TenantScopedRepository, "write_audit_log", new=AsyncMock(return_value=None)):
+            response = client.get("/context")
+    finally:
+        app.dependency_overrides.pop(resolve_auth, None)
+    assert response.status_code == 200
+    greeting = response.json()["greeting"]
+    assert "read-only" in greeting
+    assert "trusted to write directly" not in greeting
+
+    # Same key, but now a tenant-stored policy really does grant it direct
+    # write - the greeting must say so, since PolicyEngine would actually
+    # allow the write this time.
+    granted_policy = [{
+        "policy_id": "pol_test_direct_write",
+        "name": "Test direct write grant",
+        "principals": ["atom_plain"],
+        "actions": ["context.write"],
+        "effect": "allow",
+    }]
+    app.dependency_overrides[resolve_auth] = lambda: context
+    try:
+        with patch.object(TenantScopedRepository, "list_policies", new=AsyncMock(return_value=granted_policy)), \
+             patch.object(TenantScopedRepository, "get_business_context", new=AsyncMock(return_value=stored_context)), \
+             patch.object(TenantScopedRepository, "get_atom", new=AsyncMock(return_value=atom_doc)), \
+             patch.object(TenantScopedRepository, "write_audit_log", new=AsyncMock(return_value=None)):
+            response = client.get("/context")
+    finally:
+        app.dependency_overrides.pop(resolve_auth, None)
+    assert response.status_code == 200
+    greeting = response.json()["greeting"]
+    assert "trusted to write directly" in greeting
+    assert "read-only" not in greeting
+
+
 def test_fleets_list_includes_fleet_id_alongside_stored_id():
     # Every fleet document stores its primary key as "id" (same as every
     # other collection here), but the frontend's Fleet type - and every
