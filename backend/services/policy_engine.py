@@ -90,7 +90,7 @@ class PolicyEngine:
             }
             
         if ctx.role in ["Tech Lead", "Software Designer"]:
-            if action in ["atom.read", "atom.create", "atom.transition", "key.rotate", "memory.read", "memory.write", "recall.execute", "policy.read", "policy.simulate", "fleet.read", "directory.read", "directory.ingest", "decision.read", "decision.write"]:
+            if action in ["atom.read", "atom.create", "atom.transition", "key.rotate", "memory.read", "memory.write", "recall.execute", "policy.read", "policy.simulate", "fleet.read", "directory.read", "directory.ingest", "decision.read", "decision.write", "task.read", "task.create"]:
                 return {
                     "allowed": True,
                     "deciding_policy_id": f"pol_baseline_{ctx.role.lower().replace(' ', '_')}",

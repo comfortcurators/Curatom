@@ -10,7 +10,12 @@ export const Chat: React.FC = () => {
     { 
       id: '1', 
       role: 'system', 
-      text: 'Curatom Fleet Control Plane initialized. Policy checks active. Type your command, query, or select an operational scenario.'
+      text: 'Curatom Fleet Control Plane initialized. Policy checks active. Type a question, or pick the next action.',
+      options: [
+        { label: 'Run the ADK fleet', action: 'NAVIGATE', target: '/task-worker-status' },
+        { label: 'Add a memory', action: 'NAVIGATE', target: '/memory?add=1' },
+        { label: 'Test a recall', action: 'NAVIGATE', target: '/playground' },
+      ],
     }
   ]);
   const [input, setInput] = useState('');

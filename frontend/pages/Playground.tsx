@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { TerminalSquare, Play, Loader2, Database, XCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { TerminalSquare, Play, Loader2, Database, XCircle, Plus, Network } from 'lucide-react';
 import { api } from '../api';
 import { Atom, Memory } from '../types';
 import { PlainExplain } from '../components/PlainExplain';
@@ -76,11 +77,30 @@ export const Playground: React.FC = () => {
       </div>
 
       {atoms.length === 0 || memories.length === 0 ? (
-        <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-32 text-center text-13 text-ink-secondary font-prose">
-          {atoms.length === 0 && memories.length === 0 && "You don't have any agents or memory records yet. "}
-          {atoms.length === 0 && memories.length > 0 && "You don't have any agents registered yet. "}
-          {atoms.length > 0 && memories.length === 0 && "You don't have any memory records yet. "}
-          Create them under Atom Registry and Memory Bank first, then come back here to test a recall.
+        <div className="bg-surface-100 border border-surface-300 rounded-lg card-elevated p-32 text-center space-y-16">
+          <p className="text-13 text-ink-secondary font-prose">
+            {atoms.length === 0 && memories.length === 0 && "You don't have any agents or memory records yet."}
+            {atoms.length === 0 && memories.length > 0 && "You don't have any agents registered yet."}
+            {atoms.length > 0 && memories.length === 0 && "You don't have any memory records yet."}
+          </p>
+          <div className="flex flex-wrap justify-center gap-8">
+            {atoms.length === 0 && (
+              <Link
+                to="/registry"
+                className="flex items-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md text-13 font-medium"
+              >
+                <Network size={14} /> Connect an agent
+              </Link>
+            )}
+            {memories.length === 0 && (
+              <Link
+                to="/memory?add=1"
+                className="flex items-center gap-8 px-16 py-10 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md text-13 font-medium"
+              >
+                <Plus size={14} /> Add a memory
+              </Link>
+            )}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-24">

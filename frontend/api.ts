@@ -113,7 +113,7 @@ class ApiClient {
 
   // Autonomous Taskmaster
   createTask(goal: string) {
-    return this.request<{ task_id: string; status: string; plan: string; steps_count: number }>(
+    return this.request<AutonomousTask>(
       '/tasks',
       {
         method: 'POST',

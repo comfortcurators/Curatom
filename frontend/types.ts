@@ -7,7 +7,7 @@ export type FleetStatus = 'active' | 'suspended' | 'draining' | 'retired';
 export type PolicyEffect = 'allow' | 'deny';
 export type DataClassification = 'public' | 'internal' | 'confidential' | 'restricted';
 
-export type TaskStatus = 'queued' | 'planning' | 'executing' | 'evaluating_policy' | 'completed' | 'failed' | 'paused';
+export type TaskStatus = 'queued' | 'planning' | 'executing' | 'evaluating_policy' | 'completed' | 'failed' | 'paused' | 'denied';
 
 export interface ChatOption {
   label: string;
@@ -62,6 +62,17 @@ export interface AutonomousTask {
   final_result?: string;
   cost_tokens: number;
   subject_ids?: string[];
+  execution_mode?: string;
+  framework?: string;
+  model?: string;
+  events?: string[];
+  armor?: {
+    allowed?: boolean;
+    engine?: string;
+    threats?: string[];
+    reason?: string;
+  };
+  decisions_written?: Array<{ id: string; claim?: string; decision?: string; memory_ids?: string[] }>;
 }
 
 export interface TenantQuotas {

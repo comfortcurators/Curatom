@@ -3,6 +3,7 @@ uvicorn==0.52.4
 google-cloud-firestore==2.29.0
 google-cloud-storage==2.19.0
 google-genai==2.20.0
+google-adk==2.8.0
 bcrypt==4.1.2
 httpx==0.28.1
 httpx2==2.12.0

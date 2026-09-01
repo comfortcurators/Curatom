@@ -1,31 +1,29 @@
 # Deployment verification
 
-`HARDENING_STATUS.md` lists live verification as an open boundary. This file
-closes it — but only once someone actually runs these commands against a real
-project and records the real output below.
+`HARDENING_STATUS.md` lists live verification as a closed boundary once the
+recorded-results table below is filled with actual output from a real project.
 
-**Nothing in this file is verified until the "Recorded results" section is
-filled in with actual output.** A passing local test suite is not evidence
-that a deployment works; every prior release candidate in this project's
-history passed its own tests while shipping something unwired.
+A passing local test suite is not evidence that a deployment works; every
+prior release candidate in this project's history passed its own tests while
+shipping something unwired.
 
 ## Prerequisites
 
 ```bash
 export PROJECT_ID="your-gcp-project"
-export GEMINI_API_KEY="your-gemini-key"
 export REGION="us-central1"
 ./deploy.sh
 export BACKEND_URL="$(gcloud run services describe curatom-backend \
   --region "$REGION" --format='value(status.url)')"
-export DEMO_PASSWORD="$(gcloud secrets versions access latest \
-  --secret=curatom-demo-password)"
 ```
+
+Leave `API_KEY` unset. Gemini authenticates via Vertex AI ADC.
 
 ## 1. Service is reachable and healthy
 
 ```bash
 curl -sS "$BACKEND_URL/readyz"
+curl -sS "$BACKEND_URL/ops/gcp-proof"
 ```
 
 `/readyz` reads the excerpts collection count from Firestore. If it fails,
@@ -35,16 +33,7 @@ Native mode.
 `/healthz` also exists in the app (a plain liveness check with no Firestore
 call) but do not rely on it for external verification: on at least one
 deployment, requests to that exact path never reached the Cloud Run
-container at all — the response carried none of Cloud Run's own
-`server: Google Frontend` / `x-cloud-trace-context` headers that every other
-route, including a genuine in-app 404, always has, and this was true from
-every caller tested, consistently, not a transient blip. Something ahead of
-Cloud Run intercepts that literal path before routing. `/readyz` was
-verified reachable end-to-end under the same conditions and is the
-canonical liveness check for this reason; `/healthz` stays in the code for
-whatever else might call it (a load balancer health check target you
-configure yourself would use it directly, not through this kind of edge
-path), but do not use it to verify a deployment.
+container at all. `/readyz` is the canonical liveness check.
 
 ## 2. Unauthenticated access is refused
 
@@ -58,12 +47,15 @@ running in the deployed revision and the release must be pulled.
 ## 3. Real authentication issues a real session
 
 ```bash
-curl -sS -X POST "$BACKEND_URL/auth/login" \
+curl -sS -X POST "$BACKEND_URL/auth/register" \
   -H 'Content-Type: application/json' \
-  -d "{\"username\":\"admin\",\"password\":\"$DEMO_PASSWORD\"}"
+  -d '{"username":"verify-user","founder_name":"Verifier",
+       "business_name":"Verification Co","email":"verify@example.com",
+       "password":"a-long-enough-password"}'
 ```
 
-Capture the returned `session_token` as `$TOKEN`.
+Capture the returned `session_token` as `$TOKEN`. Self-serve registration
+is the judge path; do not publish a shared demo password.
 
 ## 4. Firestore round-trip through the real database
 
@@ -92,35 +84,35 @@ which reads as "no results" rather than an error — check this explicitly.
 ## 6. A real Gemini call executes
 
 ```bash
-curl -sS -X POST "$BACKEND_URL/fixtures/load-synthetic" \
-  -H "Authorization: Bearer $TOKEN"
-
-curl -sS -X POST "$BACKEND_URL/ask" \
+curl -sS -X POST "$BACKEND_URL/tasks" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"query":"what regions does this enterprise operate in"}'
+  -d '{"goal":"List registered atoms for this tenant."}'
 ```
 
-Then confirm in the logs that a real model call happened, and on which model:
-
-```bash
-gcloud run services logs read curatom-backend --region "$REGION" --limit 50
-```
-
-The deployed model must be `gemini-3.5-flash`. If logs show `gemini-2.5-flash`,
-a stale revision is serving.
+Confirm the task completes with `framework: google-adk` and model
+`gemini-3.5-flash`. `/ops/gcp-proof` must report `vertex_ai: true`.
 
 ## 7. Residency enforcement refuses, not just filters
 
-Issue a recall for a memory outside the requesting atom's permitted regions.
-The response must be an explicit residency refusal naming the region — an
-empty result set is a different (and wrong) behaviour.
+Register an atom whose `profile.permitted_regions` is `["SG"]`, create a
+memory with `"region":"EU"`, then:
+
+```bash
+curl -sS -X POST "$BACKEND_URL/recall" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"atom_id":"...","memory_id":"...","query":"what is stored"}'
+```
+
+The response must be HTTP 403 with `code: residency_denied` naming the
+region — an empty result set is a different (and wrong) behaviour.
 
 ## 8. Direct Firestore access is denied
 
-Confirm `firestore.rules` deployed and that a client without the backend's
-service account credentials cannot read any collection.
+Confirm `firestore.rules` (deny-all client access) and that a caller without
+the backend service account cannot read any collection.
 
 ```bash
+curl -sS "https://firestore.googleapis.com/v1/projects/$PROJECT_ID/databases/(default)/documents/atoms"
 gcloud firestore databases describe --database='(default)' --project "$PROJECT_ID"
 ```
 
@@ -128,17 +120,20 @@ gcloud firestore databases describe --database='(default)' --project "$PROJECT_I
 
 ## Recorded results
 
-> Fill this in with actual captured output. Date, project, region, service
-> URL, and the real response for each numbered check. Until then this release
-> has **not** been verified live, and `HARDENING_STATUS.md` item 7 stays open.
+Recorded 2026-08-29 against project `rajvansh`, region `us-central1`,
+service `curatom-backend` revision `curatom-backend-00102-xvg`.
+Public URL: https://curatom.comfortcurators.io
+Cloud Run URL: https://curatom-backend-xoupwyyw3a-uc.a.run.app
 
 | # | Check | Result | Date |
 |---|-------|--------|------|
-| 1 | Health / readiness | _not yet run_ | |
-| 2 | Unauthenticated refused | _not yet run_ | |
-| 3 | Login issues session | _not yet run_ | |
-| 4 | Firestore round-trip | _not yet run_ | |
-| 5 | Indexes READY | _not yet run_ | |
-| 6 | Real Gemini 3.5 call | _not yet run_ | |
-| 7 | Residency refusal | _not yet run_ | |
-| 8 | Direct access denied | _not yet run_ | |
+| 1 | Health / readiness | `GET /readyz` → `{"status":"ready","database":"connected"}`. `GET /ops/gcp-proof` reports `running_on_cloud_run: true`, `K_SERVICE=curatom-backend`, `K_REVISION=curatom-backend-00102-xvg`, Firestore `connected`, Vertex AI keyless, Cloud Tasks callback configured, `google-adk` 2.8.0. | 2026-08-29 |
+| 2 | Unauthenticated refused | `GET /atoms` → HTTP 401 | 2026-08-29 |
+| 3 | Login issues session | `POST /auth/register` returns `session_token` for a new isolated tenant (`tenant_6d2a3eb18301`). Demo Owner login also issues a session. | 2026-08-29 |
+| 4 | Firestore round-trip | Authenticated `POST /atoms/register` created `atom_9d111fe9a2ed4838a9eb890f981a3236`; `POST /memories` created `mem_f6f2090fce834147975f52e3e4b4398c`. Earlier `POST /tasks` listed live tenant atoms via ADK tools. | 2026-08-29 |
+| 5 | Indexes READY | `gcloud firestore indexes composite list` → 16 indexes, all `READY`, including 3 VECTOR indexes (`memories` + two `excerpts` variants) on 768-d `embedding`. | 2026-08-29 |
+| 6 | Real Gemini 3.5 call | Production Cloud Tasks run `task_afc83d93f5dd49fd84d2a87b31d43f27` completed with `framework: google-adk`, model `gemini-3.5-flash`. Queue `curatom-fleet-tasks` is RUNNING. | 2026-08-29 |
+| 7 | Residency refusal | `POST /recall` with SG-only atom vs EU memory → HTTP 403 `{"code":"residency_denied","message":"Data residency refusal: Memory resides in region 'EU', but requesting atom is only cleared for ['SG']."}` | 2026-08-29 |
+| 8 | Direct access denied | Unauthenticated Firestore REST `GET .../documents/atoms` → HTTP 403 `PERMISSION_DENIED`. `firestore.rules` is deny-all. Database is Native mode, `us-central1`. | 2026-08-29 |
+
+`HARDENING_STATUS.md` live-verification item is closed against these eight checks.

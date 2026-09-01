@@ -1,16 +1,22 @@
-# Curatom Enterprise rv0.2.0
+# Curatom Enterprise rv0.3.0
 
 Curatom Enterprise holds the canonical record of what a business is and what
 it wants, so that intent doesn't get lost or reinvented every time a
 different LLM (Claude, GPT, Gemini, or whatever launches next) is asked to
 act on the business's behalf. That's the actual product. A tenant-scoped
-agent registry, policy evaluation, grounded memory recall, data residency
-enforcement, and audit telemetry sit underneath it as the machinery that
-enforces and records what happens once that intent is acted on.
+agent registry, Google ADK fleet runtime, policy evaluation, grounded memory
+recall, data residency enforcement, and audit telemetry sit underneath it as
+the machinery that enforces and records what happens once that intent is acted
+on.
 
-> **Release boundary:** rv0.2.0 is suitable for controlled evaluation. It is
-> not represented as production-ready. Durable task execution and production
-> identity provisioning are intentionally absent.
+> **Release boundary:** rv0.3.0 is the All Things Agentic evaluation build.
+> SSO/OIDC and MFA are still absent. Durable fleet tasks now run (Google ADK
+> + Cloud Tasks). Identity is self-serve registration plus a demo Owner
+> account — not a production IdP. Curatom existed before this hackathon
+> (rv0.2.0 on Zenodo); the fleet runtime, live Cloud proof, Model Armor
+> screening, Agent Cards, and reasoning-chain traces were built during the
+> Submission Period — see `HACKATHON_SUBMISSION.md`.
+
 
 ## Implemented capabilities
 
@@ -39,14 +45,18 @@ enforces and records what happens once that intent is acted on.
 - Clearance filtering on both cursor-based memory listings and vector search.
 - A full audit trail (`/audit`) of every mutating operator action, separate
   from recall telemetry (`/logs`).
-- Explicitly disabled task execution: `/tasks` returns HTTP 501 until a durable
-  queue worker is implemented and deployed.
+- Google ADK multi-agent fleet (`gateway`, `memory_specialist`,
+  `fleet_orchestrator`) on Gemini 3.5-flash. `GET /v1/adk/catalog` lists them.
+- Durable fleet tasks: `POST /tasks` writes a Firestore record and dispatches
+  Cloud Tasks to `POST /tasks/execute`. If the queue is unbound, the same
+  fleet runs inline in the request — still durable, still audited.
+- Public Google Cloud proof: `GET /ops/gcp-proof` and `/#/architecture`.
 
 ## Project structure
 
 - `frontend/` — React 18, TypeScript, and Vite control-plane UI.
-- `backend/` — FastAPI service, Firestore repositories, policy/recall services,
-  migration scripts, tests, and a non-functional task-worker scaffold.
+- `backend/` — FastAPI service, Firestore repositories, Google ADK fleet,
+  Cloud Tasks runtime, policy/recall services, tests.
 - `frontend/firestore.indexes.json` — composite and vector index definitions.
 - `HARDENING_STATUS.md` — exact security boundary and remaining work.
 - `RELEASE_NOTES.md` — rv0.2.0 changes and deliberate limitations.
@@ -55,8 +65,8 @@ enforces and records what happens once that intent is acted on.
 
 - Python 3.12
 - Node.js 20.19 or newer (or Node.js 22.12+)
-- A Google Cloud project with Firestore configured
-- A Gemini API key
+- A Google Cloud project with Firestore in Native mode
+- Vertex AI access on that project (preferred) or a Gemini API key
 
 The validated dependency versions are pinned in `backend/requirements.txt` and
 `frontend/package.json` for reproducible evaluation.
@@ -195,9 +205,8 @@ Read `HARDENING_STATUS.md` before deployment. In particular, do not interpret a
 successful local build as proof of Cloud Run IAM, Firestore indexes, proxy
 trust, CORS, external identity, or live provider integration.
 
-Please do not demo or describe `/tasks` as live autonomous execution. Planning
-and decomposition are present; durable queued execution is a documented future
-component.
+Please do not demo `/tasks` as if it were unattended overnight autonomy —
+it is a durable ADK fleet run per submitted goal, not a weeks-long worker.
 
 ## Publisher, license, and citation
 

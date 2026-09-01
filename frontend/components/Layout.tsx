@@ -104,6 +104,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/memory', icon: Database, label: 'Memory Bank' },
       { path: '/directory', icon: BookOpen, label: 'Model Directory' },
       { path: '/playground', icon: TerminalSquare, label: 'Proving Ground' },
+      { path: '/task-worker-status', icon: Cpu, label: 'Fleet Runtime' },
+      { path: '/architecture', icon: Globe, label: 'Architecture' },
     ],
   },
 ];
@@ -166,7 +168,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     setRole(storedRole);
     setIsAgent(!!storedAtomKey);
 
-    if (!token && !storedAtomKey && location.pathname !== '/reception') {
+    if (!token && !storedAtomKey && location.pathname !== '/reception' && location.pathname !== '/architecture') {
       navigate('/reception');
     }
   }, [location, navigate]);
@@ -204,7 +206,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate('/reception');
   };
 
-  if (location.pathname === '/reception') {
+  if (location.pathname === '/reception' || location.pathname === '/architecture') {
     return <>{children}</>;
   }
 
@@ -496,11 +498,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </button>
             <h2 className="font-display text-15 text-ink-primary capitalize truncate">{pageTitle}</h2>
           </div>
-          <div className="hidden sm:flex items-center gap-16 text-11 font-mono text-ink-secondary shrink-0">
+          <div className="hidden sm:flex items-center gap-12 text-11 font-mono text-ink-secondary shrink-0">
             <span className="flex items-center gap-4 bg-surface-200 px-8 py-3 rounded border border-surface-300">
               <Globe size={12} className="text-accent" />
               <span>{tenantName || 'Workspace name not set'}</span>
             </span>
+            <Link
+              to="/task-worker-status"
+              className="flex items-center gap-6 px-12 py-7 bg-ink-primary hover:bg-ink-primary/90 text-canvas rounded-md text-12 font-medium font-ui"
+            >
+              <Cpu size={13} /> Run fleet
+            </Link>
           </div>
         </header>
 
