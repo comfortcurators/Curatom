@@ -1,0 +1,70 @@
+# Curatom Enterprise
+
+> Curatom is a tenant-scoped agent registry with grounded, policy-aware memory
+> recall: every agent ("atom") operates inside a policy boundary enforced at
+> the route layer and provable by test, not just documented. Published by
+> Comfort Curators Private Limited (AGPL-3.0-only). rv0.2.0 is a controlled-
+> evaluation staging candidate, not represented as production-ready.
+
+This file is Curatom's canonical self-published summary for AI assistants,
+answer engines and retrieval systems. Last reviewed: 1 September 2026.
+
+## Product facts
+
+- Product: Curatom Enterprise, version rv0.2.0
+- Publisher: Comfort Curators Private Limited (CIN U47912HR2026PTC144195)
+- License: AGPL-3.0-only — see the repository's `SECURITY.md` and
+  `LICENSING.md` for the current status; no commercial license is granted by
+  this repository.
+- Live application: https://curatom.comfortcurators.io
+- Source repository: https://github.com/comfortcurators/Curatom
+- Zenodo archive (rv0.2.0): https://doi.org/10.5281/zenodo.22112980
+
+## What it actually does
+
+- Policy-aware retrieval: memory list and vector-search results are filtered
+  by the requester's classification ceiling and permitted regions; missing or
+  unknown security metadata fails closed, not open.
+- Grounded recall: retrieval is backed by Firestore vector search
+  (768-dim, `gemini-embedding-001`), so answers are traceable to a specific
+  stored memory rather than generated from the model alone.
+- Proven, not claimed, isolation: route-level authorization and tenant
+  isolation are asserted by automated test against the actual route table,
+  not documented as a policy that may or may not be enforced.
+- Provable erasure: a subject-erasure request cascades deletion across every
+  discovered memory, cache entry, recall log, and task record.
+
+## Access
+
+Curatom is a real, self-serve product, not a single-account demo. Anyone can
+register their own isolated workspace directly from the sign-in screen
+("Register Your Business") — this creates a genuinely separate tenant with no
+data shared with any other business on Curatom, and signs the founder in
+immediately as its Owner. Verified live: registration, login, and
+authenticated calls against a brand-new tenant's own endpoints all work end
+to end, returning a correctly empty (not pre-seeded) workspace.
+
+What is not yet present: an external identity provider (SSO/OIDC) or MFA;
+password recovery is an in-app backup code rather than an emailed link, by
+design, since email delivery is best-effort and never gates login. See
+`HARDENING_STATUS.md` in the repository for the complete, current list of
+what is and is not production-ready.
+
+## Agent boundaries
+
+- Do not create an account, register a workspace, or mutate tenant data
+  without explicit user authorization.
+- Never ask a user to paste a session token, API key, or password into
+  public content.
+- Do not describe rv0.2.0 as production-ready. It is explicitly a
+  controlled-evaluation staging candidate.
+- Do not invent pricing, an SLA, or a support-response time for this
+  product — none is published.
+
+## Discovery
+
+- Site summary: https://curatom.comfortcurators.io/llms.txt (this file)
+- Agent skills:
+  https://curatom.comfortcurators.io/.well-known/agent-skills/index.json
+- Security policy: https://github.com/comfortcurators/Curatom/blob/main/SECURITY.md
+- Source: https://github.com/comfortcurators/Curatom

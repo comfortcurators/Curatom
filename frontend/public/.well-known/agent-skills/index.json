@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "registry-discovery",
+      "type": "skill-md",
+      "description": "Discover what Curatom Enterprise publicly exposes, how to register a real isolated workspace, and what still requires human authorization before acting.",
+      "url": "https://curatom.comfortcurators.io/.well-known/agent-skills/registry-discovery/SKILL.md",
+      "digest": "sha256:22da48d31bba7b6dc6e631f33c2c9045aa69038c2873bc6748b1a990415d3d7d"
+    }
+  ]
+}
